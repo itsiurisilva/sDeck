@@ -2594,3 +2594,255 @@ details.cfg-subsection[open] > summary .cfg-sub-chevron {
   gap: 0.75rem;
 }
 
+/* ================================================================
+   FEATURE: RIPPLE CLICK ANIMATION
+   ================================================================ */
+.deck-btn { overflow: hidden; }
+.deck-btn .ripple-circle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.28);
+  pointer-events: none;
+  transform: scale(0);
+  animation: btn-ripple 0.55s ease-out forwards;
+}
+@keyframes btn-ripple {
+  0%   { transform: scale(0); opacity: 0.7; }
+  100% { transform: scale(4); opacity: 0; }
+}
+
+/* ================================================================
+   FEATURE: LIVE BUTTON PREVIEW IN EDITOR
+   ================================================================ */
+.btn-live-preview-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.9rem 0 0.7rem;
+  background: rgba(0, 0, 0, 0.22);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  gap: 0.75rem;
+}
+.btn-live-preview-wrap .preview-hint {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.btn-live-preview {
+  width: 88px;
+  height: 88px;
+  border-radius: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  background: rgba(28, 38, 56, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  pointer-events: none;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55),
+              inset 0 1px 1px rgba(255, 255, 255, 0.14),
+              inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s;
+}
+.btn-live-preview .preview-icon {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.btn-live-preview .preview-icon svg { width: 22px; height: 22px; }
+.btn-live-preview .preview-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-align: center;
+  color: white;
+  line-height: 1.1;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0 4px;
+}
+.btn-live-preview .preview-bg-img {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  border-radius: inherit;
+  opacity: 0.85;
+}
+
+/* ================================================================
+   FEATURE: ICON PICKER
+   ================================================================ */
+.icon-search-input {
+  width: 100%;
+  margin-top: 0.45rem !important;
+  font-size: 0.82rem !important;
+  padding: 0.35rem 0.7rem !important;
+}
+.icon-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 3px;
+  max-height: 122px;
+  overflow-y: auto;
+  margin-top: 0.4rem;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.icon-picker-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: transparent;
+  transition: all 0.12s;
+  aspect-ratio: 1;
+  color: var(--text-dim);
+}
+.icon-picker-item:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: var(--text-main);
+}
+.icon-picker-item.active {
+  background: rgba(59, 130, 246, 0.28);
+  border-color: var(--primary);
+  color: white;
+}
+.icon-picker-item svg { width: 14px; height: 14px; }
+
+/* ================================================================
+   FEATURE: MACRO SEQUENCE BUILDER
+   ================================================================ */
+.macro-step {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 0.65rem;
+  margin-bottom: 0.45rem;
+}
+.macro-step-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.45rem;
+}
+.macro-step-num {
+  min-width: 20px;
+  height: 20px;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 0.68rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.macro-step-type-sel {
+  flex: 1;
+  font-size: 0.8rem !important;
+  padding: 0.28rem 0.5rem !important;
+  border-radius: 7px !important;
+}
+.macro-step-del {
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.22);
+  color: #f87171;
+  border-radius: 6px;
+  padding: 2px 7px;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.macro-step-del:hover { background: rgba(239, 68, 68, 0.28); }
+.macro-step-params {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.macro-step-params select,
+.macro-step-params input,
+.macro-step-params textarea {
+  font-size: 0.8rem !important;
+  padding: 0.28rem 0.55rem !important;
+}
+.macro-step-delay-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.3rem;
+  font-size: 0.74rem;
+  color: var(--text-dim);
+}
+.macro-step-delay-row input { width: 68px; text-align: center; }
+#macro-add-step-btn {
+  width: 100%;
+  margin-top: 0.45rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  border-radius: 9px;
+  padding: 0.5rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: all 0.18s;
+}
+#macro-add-step-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text-main);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+.macro-empty-hint {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  text-align: center;
+  padding: 0.75rem 0;
+}
+
+/* ================================================================
+   FEATURE: IMPORT / EXPORT PROFILE BUTTONS
+   ================================================================ */
+.profile-io-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  border-radius: 8px;
+  padding: 0.32rem 0.6rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.73rem;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.profile-io-btn:hover {
+  background: rgba(255, 255, 255, 0.11);
+  color: var(--text-main);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+.profile-io-btn svg { width: 13px; height: 13px; }
+

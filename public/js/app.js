@@ -6,6 +6,7 @@ let settings = {};
 let state = {};
 let editMode = false;
 let selectedButtonCell = null; // { type: 'grid'|'fav', row, col, index }
+let macroSteps = []; // live macro steps being edited
 
 // OBS Connection States
 let obsConnected = false;
@@ -173,6 +174,21 @@ const elBtnDeleteProfile = document.getElementById('btn-delete-profile');
 // OBS Sources List
 const elObsSourcesList = document.getElementById('obs-sources-list');
 
+// New feature elements
+const elBtnExportProfiles = document.getElementById('btn-export-profiles');
+const elBtnImportProfiles = document.getElementById('btn-import-profiles');
+const elImportProfilesInput = document.getElementById('import-profiles-input');
+const elIconSearchInput = document.getElementById('icon-search-input');
+const elIconPickerGrid = document.getElementById('icon-picker-grid');
+const elBtnLivePreview = document.getElementById('btn-live-preview');
+const elPreviewIconEl = document.getElementById('preview-icon-el');
+const elPreviewLabelEl = document.getElementById('preview-label-el');
+const elFieldsClipboard = document.getElementById('fields-clipboard');
+const elClipboardText = document.getElementById('clipboard-text');
+const elFieldsMacro = document.getElementById('fields-macro');
+const elMacroStepsList = document.getElementById('macro-steps-list');
+const elMacroAddStepBtn = document.getElementById('macro-add-step-btn');
+
 // OBS Toggle Source Visibility Parameters inside drawer
 const elParamObsSource = document.getElementById('param-obs-source');
 const elObsSourceSceneSelect = document.getElementById('obs-source-scene-select');
@@ -192,6 +208,372 @@ function showToast(message, isError = false) {
   setTimeout(() => {
     elToast.classList.add('hidden');
   }, 3500);
+}
+
+// -------------------------------------------------------------
+// FEATURE: RIPPLE ANIMATION
+// -------------------------------------------------------------
+function addRipple(btn, e) {
+  const rect = btn.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  const x = e.clientX - rect.left - size / 2;
+  const y = e.clientY - rect.top  - size / 2;
+  const ripple = document.createElement('span');
+  ripple.className = 'ripple-circle';
+  ripple.style.cssText = `width:${size}px;height:${size}px;left:${x}px;top:${y}px;`;
+  btn.appendChild(ripple);
+  ripple.addEventListener('animationend', () => ripple.remove());
+}
+
+// -------------------------------------------------------------
+// FEATURE: LIVE BUTTON PREVIEW
+// -------------------------------------------------------------
+function updateLivePreview() {
+  if (!elBtnLivePreview) return;
+  const useImage = currentVisualType === 'image';
+  const label = useImage ? (elBtnLabelImg?.value || '') : (elBtnLabel?.value || '');
+  const icon  = useImage ? '' : (elBtnIcon?.value || '');
+  const color = elBtnColor?.value || '#1c2638';
+  const iconColor  = elBtnIconColor?.value || '#ffffff';
+  const textColor  = elBtnTextColor?.value || '#ffffff';
+  const glowColor  = elBtnGlowColor?.value || color;
+  const imgUrl     = useImage ? (elBtnImageUrl?.value || '') : '';
+
+  elBtnLivePreview.style.background = color;
+  elBtnLivePreview.style.boxShadow = `0 6px 20px rgba(0,0,0,0.55), 0 0 12px ${glowColor}55, inset 0 1px 1px rgba(255,255,255,0.14)`;
+  elBtnLivePreview.style.borderColor = `${glowColor}55`;
+
+  // Background image
+  let bgEl = elBtnLivePreview.querySelector('.preview-bg-img');
+  if (imgUrl) {
+    if (!bgEl) {
+      bgEl = document.createElement('div');
+      bgEl.className = 'preview-bg-img';
+      elBtnLivePreview.insertBefore(bgEl, elBtnLivePreview.firstChild);
+    }
+    bgEl.style.backgroundImage = `url(${imgUrl})`;
+    elPreviewIconEl.style.display = 'none';
+  } else {
+    if (bgEl) bgEl.remove();
+    elPreviewIconEl.style.display = '';
+    elPreviewIconEl.style.color = iconColor;
+    if (icon) {
+      elPreviewIconEl.innerHTML = `<i data-lucide="${icon}"></i>`;
+      lucide.createIcons({ nodes: [elPreviewIconEl] });
+    } else {
+      elPreviewIconEl.innerHTML = '';
+    }
+  }
+
+  elPreviewLabelEl.textContent = label || '';
+  elPreviewLabelEl.style.color = textColor;
+}
+
+// -------------------------------------------------------------
+// FEATURE: ICON PICKER
+// -------------------------------------------------------------
+const ICON_LIST = [
+  'play','pause','stop-circle','skip-back','skip-forward',
+  'mic','mic-off','volume-2','volume-x','volume-1',
+  'video','video-off','camera','camera-off',
+  'monitor','monitor-off','tv',
+  'music','headphones','radio','disc',
+  'star','heart','zap','flame',
+  'settings','settings-2','sliders',
+  'user','users','shield','crown',
+  'message-square','message-circle','send',
+  'timer','clock','alarm-clock',
+  'coffee','beer','gamepad-2','sword',
+  'trending-up','activity','bar-chart-2',
+  'bell','bell-off','alert-triangle',
+  'check','check-circle','x','x-circle',
+  'home','layout-grid','layers',
+  'image','film','aperture',
+  'gift','trophy','award','party-popper',
+  'thumbs-up','thumbs-down',
+  'eye','eye-off','lock','unlock',
+  'power','wifi','bluetooth',
+  'smile','laugh','sparkles',
+  'refresh-cw','download','upload',
+  'globe','navigation','link','external-link',
+  'edit','trash-2','copy','clipboard',
+  'command','terminal','code',
+  'plus','minus','grid',
+  'share-2','rss','broadcast',
+  'sun','moon','cloud','rainbow'
+];
+
+function renderIconPicker(filter = '') {
+  if (!elIconPickerGrid) return;
+  const currentIcon = elBtnIcon?.value || '';
+  const fl = filter.toLowerCase().trim();
+  const icons = fl ? ICON_LIST.filter(i => i.includes(fl)) : ICON_LIST;
+
+  elIconPickerGrid.innerHTML = '';
+  icons.forEach(iconName => {
+    const el = document.createElement('div');
+    el.className = `icon-picker-item${iconName === currentIcon ? ' active' : ''}`;
+    el.title = iconName;
+    el.innerHTML = `<i data-lucide="${iconName}"></i>`;
+    el.addEventListener('click', () => {
+      if (elBtnIcon) elBtnIcon.value = iconName;
+      document.querySelectorAll('.icon-picker-item').forEach(i => i.classList.remove('active'));
+      el.classList.add('active');
+      updateLivePreview();
+    });
+    elIconPickerGrid.appendChild(el);
+  });
+  lucide.createIcons({ nodes: [elIconPickerGrid] });
+}
+
+if (elIconSearchInput) {
+  elIconSearchInput.addEventListener('input', (e) => renderIconPicker(e.target.value));
+}
+if (elBtnIcon) {
+  elBtnIcon.addEventListener('input', () => {
+    updateLivePreview();
+    const val = elBtnIcon.value.trim();
+    document.querySelectorAll('.icon-picker-item').forEach(el => {
+      el.classList.toggle('active', el.title === val);
+    });
+  });
+}
+
+// -------------------------------------------------------------
+// FEATURE: IMPORT / EXPORT PROFILES
+// -------------------------------------------------------------
+if (elBtnExportProfiles) {
+  elBtnExportProfiles.addEventListener('click', () => {
+    const json = JSON.stringify({ profiles, activeProfile: currentProfileId }, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `streamerdeck-perfis-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Perfis exportados com sucesso!');
+  });
+}
+
+if (elBtnImportProfiles) {
+  elBtnImportProfiles.addEventListener('click', () => elImportProfilesInput?.click());
+}
+
+if (elImportProfilesInput) {
+  elImportProfilesInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data.profiles) throw new Error('Ficheiro inválido: sem "profiles"');
+      if (!confirm(`Importar ${Object.keys(data.profiles).length} perfil(is)? Os perfis atuais serão substituídos.`)) return;
+      profiles = data.profiles;
+      if (data.activeProfile && profiles[data.activeProfile]) {
+        currentProfileId = data.activeProfile;
+      }
+      socket.send(JSON.stringify({ type: 'save_profiles', profiles, activeProfile: currentProfileId }));
+      showToast('Perfis importados com sucesso!');
+    } catch (err) {
+      showToast(`Erro ao importar: ${err.message}`, true);
+    }
+    e.target.value = '';
+  });
+}
+
+// -------------------------------------------------------------
+// FEATURE: MACRO EXECUTION
+// -------------------------------------------------------------
+async function executeMacro(steps) {
+  if (!steps || steps.length === 0) return;
+  for (const step of steps) {
+    if (step.delay > 0) {
+      await new Promise(resolve => setTimeout(resolve, step.delay));
+    }
+    if (step.type === 'nav') {
+      const target = step.data?.targetProfile;
+      if (target && profiles[target]) {
+        currentProfileId = target;
+        renderProfilesTabs();
+        renderGrid();
+      }
+    } else if (step.type === 'clipboard') {
+      try { await navigator.clipboard.writeText(step.data?.text || ''); showToast('Texto copiado!'); } catch(e) {}
+    } else if (step.type !== 'none' && step.type) {
+      socket.send(JSON.stringify({ type: 'trigger_action', actionType: step.type, actionData: step.data }));
+    }
+  }
+}
+
+// MACRO BUILDER UI
+function renderMacroSteps() {
+  if (!elMacroStepsList) return;
+  elMacroStepsList.innerHTML = '';
+
+  if (macroSteps.length === 0) {
+    elMacroStepsList.innerHTML = '<div class="macro-empty-hint">Sem etapas. Adiciona uma abaixo.</div>';
+    return;
+  }
+
+  macroSteps.forEach((step, idx) => {
+    const div = document.createElement('div');
+    div.className = 'macro-step';
+    div.innerHTML = `
+      <div class="macro-step-header">
+        <div class="macro-step-num">${idx + 1}</div>
+        <select class="macro-step-type-sel glass-input">
+          <option value="obs"${step.type==='obs'?' selected':''}>OBS</option>
+          <option value="sound"${step.type==='sound'?' selected':''}>Som</option>
+          <option value="system"${step.type==='system'?' selected':''}>Sistema</option>
+          <option value="nav"${step.type==='nav'?' selected':''}>Mudar Perfil</option>
+          <option value="clipboard"${step.type==='clipboard'?' selected':''}>Copiar Texto</option>
+        </select>
+        <button class="macro-step-del" data-idx="${idx}">✕ Remover</button>
+      </div>
+      <div class="macro-step-params" id="macro-params-${idx}"></div>
+      <div class="macro-step-delay-row">
+        <span>Aguardar</span>
+        <input type="number" class="glass-input macro-delay-input" value="${step.delay || 0}" min="0" step="100" data-idx="${idx}">
+        <span>ms antes desta etapa</span>
+      </div>
+    `;
+
+    const typeSelect = div.querySelector('.macro-step-type-sel');
+    typeSelect.addEventListener('change', (e) => {
+      macroSteps[idx].type = e.target.value;
+      macroSteps[idx].data = {};
+      renderMacroSteps();
+    });
+
+    div.querySelector('.macro-step-del').addEventListener('click', () => {
+      macroSteps.splice(idx, 1);
+      renderMacroSteps();
+    });
+
+    div.querySelector('.macro-delay-input').addEventListener('change', (e) => {
+      macroSteps[idx].delay = parseInt(e.target.value) || 0;
+    });
+
+    elMacroStepsList.appendChild(div);
+    renderMacroStepParams(idx, div.querySelector(`#macro-params-${idx}`));
+  });
+}
+
+function renderMacroStepParams(idx, container) {
+  const step = macroSteps[idx];
+  container.innerHTML = '';
+
+  if (step.type === 'obs') {
+    const cmdSel = document.createElement('select');
+    cmdSel.className = 'glass-input';
+    const obsOpts = [
+      ['SetCurrentProgramScene', 'Mudar Cena'],
+      ['ToggleInputMute', 'Alternar Mudo'],
+      ['ToggleStream', 'Alternar Stream'],
+      ['ToggleRecord', 'Alternar Gravação'],
+    ];
+    obsOpts.forEach(([v, l]) => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = l;
+      if ((step.data?.command) === v) o.selected = true;
+      cmdSel.appendChild(o);
+    });
+    cmdSel.addEventListener('change', (e) => {
+      step.data = { command: e.target.value, params: {} };
+      renderMacroStepParams(idx, container);
+    });
+    container.appendChild(cmdSel);
+    if (!step.data?.command) step.data = { command: 'SetCurrentProgramScene', params: {} };
+
+    if (step.data.command === 'SetCurrentProgramScene') {
+      const sceneSel = document.createElement('select');
+      sceneSel.className = 'glass-input';
+      sceneSel.innerHTML = '<option value="">-- Selecione cena --</option>';
+      obsScenes.forEach(s => {
+        const o = document.createElement('option');
+        o.value = s; o.textContent = s;
+        if (step.data.params?.sceneName === s) o.selected = true;
+        sceneSel.appendChild(o);
+      });
+      sceneSel.addEventListener('change', (e) => { if (!step.data.params) step.data.params = {}; step.data.params.sceneName = e.target.value; });
+      container.appendChild(sceneSel);
+    } else if (step.data.command === 'ToggleInputMute') {
+      const inputSel = document.createElement('select');
+      inputSel.className = 'glass-input';
+      inputSel.innerHTML = '<option value="">-- Selecione entrada --</option>';
+      obsInputs.forEach(s => {
+        const o = document.createElement('option');
+        o.value = s; o.textContent = s;
+        if (step.data.params?.inputName === s) o.selected = true;
+        inputSel.appendChild(o);
+      });
+      inputSel.addEventListener('change', (e) => { if (!step.data.params) step.data.params = {}; step.data.params.inputName = e.target.value; });
+      container.appendChild(inputSel);
+    }
+
+  } else if (step.type === 'sound') {
+    const soundSel = document.createElement('select');
+    soundSel.className = 'glass-input';
+    soundSel.innerHTML = '<option value="">-- Selecione som --</option>';
+    const synths = ['airhorn','siren','coin','laser','boom','success'];
+    synths.forEach(s => {
+      const o = document.createElement('option');
+      o.value = s; o.textContent = `Sintetizador: ${s}`;
+      if (step.data?.file === s) o.selected = true;
+      soundSel.appendChild(o);
+    });
+    customSounds.forEach(s => {
+      const o = document.createElement('option');
+      o.value = s.id; o.textContent = s.name;
+      if (step.data?.file === s.id) o.selected = true;
+      soundSel.appendChild(o);
+    });
+    soundSel.addEventListener('change', (e) => { step.data = { file: e.target.value }; });
+    if (!step.data?.file) step.data = { file: '' };
+    container.appendChild(soundSel);
+
+  } else if (step.type === 'system') {
+    const ta = document.createElement('textarea');
+    ta.className = 'glass-input';
+    ta.rows = 2;
+    ta.placeholder = 'Ex: start chrome, powershell -Command "..."';
+    ta.value = step.data?.command || '';
+    ta.addEventListener('input', (e) => { step.data = { command: e.target.value }; });
+    if (!step.data) step.data = { command: '' };
+    container.appendChild(ta);
+
+  } else if (step.type === 'nav') {
+    const navSel = document.createElement('select');
+    navSel.className = 'glass-input';
+    navSel.innerHTML = '<option value="">-- Selecione perfil --</option>';
+    Object.keys(profiles).forEach(pId => {
+      const o = document.createElement('option');
+      o.value = pId; o.textContent = profiles[pId].name;
+      if (step.data?.targetProfile === pId) o.selected = true;
+      navSel.appendChild(o);
+    });
+    navSel.addEventListener('change', (e) => { step.data = { targetProfile: e.target.value }; });
+    if (!step.data) step.data = {};
+    container.appendChild(navSel);
+
+  } else if (step.type === 'clipboard') {
+    const ta = document.createElement('textarea');
+    ta.className = 'glass-input';
+    ta.rows = 2;
+    ta.placeholder = 'Texto a copiar...';
+    ta.value = step.data?.text || '';
+    ta.addEventListener('input', (e) => { step.data = { text: e.target.value }; });
+    if (!step.data) step.data = { text: '' };
+    container.appendChild(ta);
+  }
+}
+
+if (elMacroAddStepBtn) {
+  elMacroAddStepBtn.addEventListener('click', () => {
+    macroSteps.push({ type: 'obs', delay: 0, data: { command: 'SetCurrentProgramScene', params: {} } });
+    renderMacroSteps();
+  });
 }
 
 // -------------------------------------------------------------
@@ -938,7 +1320,7 @@ function renderGrid() {
         });
       }
 
-      btn.addEventListener('click', () => handleButtonClick(r, c, btnData));
+      btn.addEventListener('click', (e) => handleButtonClick(r, c, btnData, e));
       elDeckGrid.appendChild(btn);
     }
   }
@@ -1063,12 +1445,13 @@ function renderFavorites() {
   });
 }
 
-function handleButtonClick(row, col, btnData) {
+function handleButtonClick(row, col, btnData, clickEvent) {
   if (editMode) {
     selectedButtonCell = { type: 'grid', row, col };
     openEditorDrawer(row, col, btnData);
     renderGrid();
   } else if (btnData) {
+    if (clickEvent) addRipple(clickEvent.currentTarget, clickEvent);
     executeAction(btnData);
   }
 }
@@ -1091,6 +1474,11 @@ function executeAction(btnData) {
       renderProfilesTabs();
       renderGrid();
     }
+  } else if (btnData.actionType === 'clipboard') {
+    const text = btnData.actionData?.text || '';
+    navigator.clipboard.writeText(text).then(() => showToast('Texto copiado!')).catch(() => showToast('Erro ao copiar', true));
+  } else if (btnData.actionType === 'macro') {
+    executeMacro(btnData.actionData?.steps || []);
   } else {
     socket.send(JSON.stringify({
       type: 'trigger_action',
@@ -1176,6 +1564,10 @@ function openEditorDrawer(row, col, btnData) {
 
   toggleEditorActionFields();
 
+  // Populate new action fields
+  if (elClipboardText) elClipboardText.value = '';
+  macroSteps = [];
+
   // Populate specific action details
   if (btnData && btnData.actionData) {
     const data = btnData.actionData;
@@ -1204,6 +1596,11 @@ function openEditorDrawer(row, col, btnData) {
       elNavTargetProfile.value = data.targetProfile || '';
     } else if (btnData.actionType === 'sound') {
       elSoundSelect.value = data.file || '';
+    } else if (btnData.actionType === 'clipboard') {
+      if (elClipboardText) elClipboardText.value = data.text || '';
+    } else if (btnData.actionType === 'macro') {
+      macroSteps = JSON.parse(JSON.stringify(data.steps || []));
+      renderMacroSteps();
     }
   } else {
     elObsCmd.value = 'SetCurrentProgramScene';
@@ -1222,6 +1619,11 @@ function openEditorDrawer(row, col, btnData) {
     elSoundSelect.value = '';
     toggleObsParamFields();
   }
+
+  // Init icon picker & live preview
+  renderIconPicker('');
+  if (elIconSearchInput) elIconSearchInput.value = '';
+  updateLivePreview();
 }
 
 function closeEditorDrawer() {
@@ -1251,6 +1653,7 @@ function setVisualType(type) {
     elVisualTabIcon.classList.remove('active');
     elVisualTabImage.classList.add('active');
   }
+  updateLivePreview();
 }
 
 elVisualTabIcon.addEventListener('click', () => setVisualType('icon'));
@@ -1287,6 +1690,7 @@ elBtnRemoveImage.addEventListener('click', () => {
   elBtnImagePreview.src = '';
   elBtnImagePreviewContainer.style.display = 'none';
   elBtnImageDropZone.style.display = '';
+  updateLivePreview();
 });
 
 async function uploadButtonImage(file) {
@@ -1311,6 +1715,7 @@ async function uploadButtonImage(file) {
       elBtnImagePreviewContainer.style.display = '';
       elBtnImageDropZone.style.display = 'none';
       showToast('Imagem carregada com sucesso!');
+      updateLivePreview();
     } else {
       showToast(`Falha no upload: ${result.error}`, true);
     }
@@ -1321,43 +1726,54 @@ async function uploadButtonImage(file) {
 
 elBtnColor.addEventListener('input', (e) => {
   elBtnColorText.value = e.target.value;
+  updateLivePreview();
 });
 
 elBtnColorText.addEventListener('input', (e) => {
   if (e.target.value.match(/^#[0-9A-Fa-f]{6}$/)) {
     elBtnColor.value = e.target.value;
+    updateLivePreview();
   }
 });
 
 elBtnIconColor.addEventListener('input', (e) => {
   elBtnIconColorText.value = e.target.value;
+  updateLivePreview();
 });
 
 elBtnIconColorText.addEventListener('input', (e) => {
   if (e.target.value.match(/^#[0-9A-Fa-f]{6}$/)) {
     elBtnIconColor.value = e.target.value;
+    updateLivePreview();
   }
 });
 
 elBtnTextColor.addEventListener('input', (e) => {
   elBtnTextColorText.value = e.target.value;
+  updateLivePreview();
 });
 
 elBtnTextColorText.addEventListener('input', (e) => {
   if (e.target.value.match(/^#[0-9A-Fa-f]{6}$/)) {
     elBtnTextColor.value = e.target.value;
+    updateLivePreview();
   }
 });
 
 elBtnGlowColor.addEventListener('input', (e) => {
   elBtnGlowColorText.value = e.target.value;
+  updateLivePreview();
 });
 
 elBtnGlowColorText.addEventListener('input', (e) => {
   if (e.target.value.match(/^#[0-9A-Fa-f]{6}$/)) {
     elBtnGlowColor.value = e.target.value;
+    updateLivePreview();
   }
 });
+
+elBtnLabel?.addEventListener('input', updateLivePreview);
+elBtnLabelImg?.addEventListener('input', updateLivePreview);
 
 elBtnActionType.addEventListener('change', toggleEditorActionFields);
 elObsCmd.addEventListener('change', toggleObsParamFields);
@@ -1368,11 +1784,18 @@ function toggleEditorActionFields() {
   elFieldsSystem.classList.add('hidden');
   elFieldsNav.classList.add('hidden');
   elFieldsSound.classList.add('hidden');
+  elFieldsClipboard?.classList.add('hidden');
+  elFieldsMacro?.classList.add('hidden');
 
   if (type === 'obs') elFieldsObs.classList.remove('hidden');
   else if (type === 'system') elFieldsSystem.classList.remove('hidden');
   else if (type === 'nav') elFieldsNav.classList.remove('hidden');
   else if (type === 'sound') elFieldsSound.classList.remove('hidden');
+  else if (type === 'clipboard') elFieldsClipboard?.classList.remove('hidden');
+  else if (type === 'macro') {
+    elFieldsMacro?.classList.remove('hidden');
+    renderMacroSteps();
+  }
 }
 
 function toggleObsParamFields() {
@@ -1510,6 +1933,14 @@ elSaveActionBtn.addEventListener('click', () => {
     actionData = { targetProfile: elNavTargetProfile.value };
   } else if (actionType === 'sound') {
     actionData = { file: elSoundSelect.value };
+  } else if (actionType === 'clipboard') {
+    actionData = { text: elClipboardText?.value || '' };
+  } else if (actionType === 'macro') {
+    if (macroSteps.length === 0) {
+      showToast('Adiciona pelo menos uma etapa ao macro!', true);
+      return;
+    }
+    actionData = { steps: JSON.parse(JSON.stringify(macroSteps)) };
   }
 
   const btnData = actionType !== 'none'

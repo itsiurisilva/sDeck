@@ -80,6 +80,13 @@
               <button id="btn-manage-profiles" class="profile-settings-btn" title="Gerenciar Perfil Ativo">
                 <i data-lucide="settings"></i>
               </button>
+              <button id="btn-export-profiles" class="profile-io-btn" title="Exportar Perfis (JSON)">
+                <i data-lucide="download"></i> Exportar
+              </button>
+              <button id="btn-import-profiles" class="profile-io-btn" title="Importar Perfis (JSON)">
+                <i data-lucide="upload"></i> Importar
+              </button>
+              <input type="file" id="import-profiles-input" accept=".json" style="display:none;">
             </div>
           </div>
 
@@ -118,6 +125,16 @@
               <h3>Editar Botão</h3>
               <button id="editor-close" class="close-btn">&times;</button>
             </div>
+
+            <!-- LIVE PREVIEW -->
+            <div class="btn-live-preview-wrap">
+              <span class="preview-hint">Preview</span>
+              <div id="btn-live-preview" class="btn-live-preview">
+                <div class="preview-icon" id="preview-icon-el"></div>
+                <div class="preview-label" id="preview-label-el">Botão</div>
+              </div>
+            </div>
+
             <div class="drawer-body">
               <p class="button-coords-label">Posição: Linha <span id="editor-row">0</span>, Coluna <span id="editor-col">0</span></p>
 
@@ -143,9 +160,10 @@
                     <input type="text" id="btn-label" placeholder="Ex: Iniciar Stream" maxlength="24">
                   </div>
                   <div class="form-group">
-                    <label for="btn-icon">Ícone (Nome Lucide)</label>
+                    <label for="btn-icon">Ícone</label>
                     <input type="text" id="btn-icon" placeholder="Ex: play, mic, volume-2">
-                    <div class="icon-help">Consulte o site do Lucide Icons para nomes.</div>
+                    <input type="text" id="icon-search-input" class="icon-search-input" placeholder="Pesquisar ícones...">
+                    <div id="icon-picker-grid" class="icon-picker-grid"></div>
                   </div>
                   <div class="form-group">
                     <label for="btn-icon-color">Cor do Ícone</label>
@@ -209,6 +227,8 @@
                     <option value="system">Sistema (Comando / PowerShell / App)</option>
                     <option value="nav">Mudar Perfil</option>
                     <option value="sound">Tocar Som (Soundboard)</option>
+                    <option value="macro">Macro (Múltiplas Ações)</option>
+                    <option value="clipboard">Copiar para Clipboard</option>
                   </select>
                 </div>
 
@@ -277,6 +297,26 @@
                   <div class="form-group">
                     <label for="sound-select">Selecionar Som</label>
                     <select id="sound-select"></select>
+                  </div>
+                </div>
+
+                <!-- Clipboard Action Fields -->
+                <div id="fields-clipboard" class="action-fields hidden">
+                  <div class="form-group">
+                    <label for="clipboard-text">Texto a Copiar</label>
+                    <textarea id="clipboard-text" rows="3" placeholder="Ex: !comando, GG WP, link do stream..."></textarea>
+                    <div class="icon-help">Copiado para o clipboard ao pressionar o botão. Ideal para chat commands.</div>
+                  </div>
+                </div>
+
+                <!-- Macro Action Fields -->
+                <div id="fields-macro" class="action-fields hidden">
+                  <div id="macro-steps-list"></div>
+                  <button type="button" id="macro-add-step-btn">
+                    <i data-lucide="plus"></i> Adicionar Etapa
+                  </button>
+                  <div class="info-box mt-2" style="font-size:0.77rem;">
+                    <strong>Macro:</strong> Cada etapa é executada em sequência. O atraso é em ms (1000 = 1 seg).
                   </div>
                 </div>
 
