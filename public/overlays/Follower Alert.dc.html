@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap" rel="stylesheet">
+  <style>
+    html,body{background:transparent!important;margin:0;padding:0;overflow:hidden;}
+    @keyframes alertIn{0%,3%{transform:translateX(110%);opacity:0}13%,77%{transform:translateX(0);opacity:1}87%,100%{transform:translateX(-110%);opacity:0}}
+    @keyframes shimmer{0%{left:-100%}100%{left:200%}}
+    @keyframes pulse{0%,100%{opacity:0.5;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}
+  </style>
+</helmet>
+<svg style="display:none;" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="leaf-fa" viewBox="0 0 16 16">
+    <rect x="7" y="13" width="2" height="3" fill="#4aba5a"></rect>
+    <rect x="6" y="8" width="4" height="5" fill="#3d9e46"></rect>
+    <rect x="7" y="5" width="2" height="5" fill="#3d9e46"></rect>
+    <rect x="3" y="9" width="3" height="2" fill="#4aba5a"></rect>
+    <rect x="2" y="7" width="3" height="2" fill="#4aba5a"></rect>
+    <rect x="4" y="5" width="2" height="2" fill="#4aba5a"></rect>
+    <rect x="10" y="9" width="3" height="2" fill="#4aba5a"></rect>
+    <rect x="11" y="7" width="3" height="2" fill="#4aba5a"></rect>
+    <rect x="10" y="5" width="2" height="2" fill="#4aba5a"></rect>
+    <rect x="7" y="3" width="2" height="3" fill="#4aba5a"></rect>
+    <rect x="5" y="7" width="2" height="2" fill="#4aba5a"></rect>
+    <rect x="9" y="7" width="2" height="2" fill="#4aba5a"></rect>
+  </symbol>
+</svg>
+<div style="position:relative;width:1920px;height:1080px;overflow:hidden;font-family:'Press Start 2P',monospace;">
+  <sc-if value="{{ active }}">
+    <div style="position:absolute;top:120px;right:22px;animation:alertIn 12s ease-in-out forwards;">
+      <div style="background:rgba(8,6,20,0.97);border:2px solid #E8A020;padding:24px 32px;box-shadow:0 0 40px rgba(232,160,32,0.22),0 8px 32px rgba(0,0,0,0.7);min-width:460px;max-width:520px;position:relative;overflow:hidden;">
+        <!-- shimmer effect -->
+        <div style="position:absolute;top:0;bottom:0;width:60px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.04),transparent);animation:shimmer 2.5s ease-in-out infinite;pointer-events:none;"></div>
+        <!-- top accent line -->
+        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#FF6600,#E8A020,#FFD060,#E8A020,#FF6600);"></div>
+        <!-- header -->
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+          <svg viewBox="0 0 16 16" width="26" height="26" style="image-rendering:pixelated;flex-shrink:0;animation:pulse 1.5s ease-in-out infinite;" xmlns="http://www.w3.org/2000/svg"><use href="#leaf-fa"></use></svg>
+          <div style="font-size:11px;color:#E8A020;letter-spacing:0.12em;">NOVO SEGUIDOR</div>
+        </div>
+        <!-- username -->
+        <div style="font-family:'VT323',monospace;font-size:58px;color:#f0e6d0;line-height:1.05;margin-bottom:12px;word-break:break-all;">{{ name }}</div>
+        <!-- divider -->
+        <div style="height:2px;background:linear-gradient(90deg,#FF6600,#E8A020,transparent);margin-bottom:12px;"></div>
+        <!-- message -->
+        <div style="font-family:'VT323',monospace;font-size:30px;color:#3d9e46;letter-spacing:0.08em;">{{ message }}</div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1920,&quot;height&quot;:1080}}">
+class Component extends DCLogic {
+  state = { active: false, name: "", message: "" };
+  timeout = null;
+
+  componentDidMount() {
+    this.handleAlert = (e) => {
+      const msg = e.detail;
+      if (msg.type === "alert" && msg.data.alertType === "follow") {
+        if (this.timeout) clearTimeout(this.timeout);
+        this.setState({
+          active: true,
+          name: msg.data.name,
+          message: msg.data.message || "BORA DEMAIS, TROPA!"
+        });
+        this.timeout = setTimeout(() => {
+          this.setState({ active: false });
+        }, 12000);
+      }
+    };
+    window.addEventListener("stream-alert", this.handleAlert);
+    
+    // Auto-visible in preview dashboards
+    if (window.parent !== window || document.body.hasAttribute("data-dc-editor-on")) {
+      this.setState({ active: true, name: "PixelHoodRat420", message: "BORA DEMAIS, TROPA!" });
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.handleAlert) window.removeEventListener("stream-alert", this.handleAlert);
+    if (this.timeout) clearTimeout(this.timeout);
+  }
+
+  renderVals() {
+    return {
+      active: this.state.active,
+      name: this.state.name,
+      message: this.state.message
+    };
+  }
+}
+</script>
+</body>
+</html>

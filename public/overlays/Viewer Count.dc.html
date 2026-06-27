@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap" rel="stylesheet">
+  <style>
+    html,body{background:transparent!important;margin:0;padding:0;overflow:hidden;}
+    @keyframes glowPulse{0%,100%{box-shadow:0 0 10px rgba(232,160,32,0.15)}50%{box-shadow:0 0 26px rgba(232,160,32,0.4)}}
+  </style>
+</helmet>
+<div style="position:relative;width:1920px;height:1080px;overflow:hidden;font-family:'Press Start 2P',monospace;">
+  <div style="position:absolute;top:32px;right:32px;">
+    <div style="background:rgba(8,6,20,0.93);border:2px solid #E8A020;padding:11px 22px;display:flex;align-items:center;gap:14px;animation:glowPulse 3s ease-in-out infinite;">
+      <svg viewBox="0 0 12 8" width="30" height="20" style="image-rendering:pixelated;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg">
+        <rect x="3" y="0" width="6" height="1" fill="#E8A020"></rect>
+        <rect x="1" y="1" width="10" height="1" fill="#E8A020"></rect>
+        <rect x="0" y="2" width="12" height="1" fill="#E8A020"></rect>
+        <rect x="0" y="3" width="12" height="2" fill="#E8A020"></rect>
+        <rect x="4" y="2" width="4" height="3" fill="#0d0b18"></rect>
+        <rect x="5" y="3" width="2" height="1" fill="#f0e6d0"></rect>
+        <rect x="0" y="5" width="12" height="1" fill="#E8A020"></rect>
+        <rect x="1" y="6" width="10" height="1" fill="#E8A020"></rect>
+        <rect x="3" y="7" width="6" height="1" fill="#E8A020"></rect>
+      </svg>
+      <span style="font-family:'VT323',monospace;font-size:46px;color:#f0e6d0;letter-spacing:0.04em;line-height:1;">{{ viewerCount || 0 }}</span>
+      <span style="font-size:9px;color:#4a3f5a;letter-spacing:0.07em;align-self:flex-end;padding-bottom:5px;">VIEWERS</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1920,&quot;height&quot;:1080}}"></script>
+</body>
+</html>

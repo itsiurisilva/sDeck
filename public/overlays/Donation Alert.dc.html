@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap" rel="stylesheet">
+  <style>
+    html,body{background:transparent!important;margin:0;padding:0;overflow:hidden;}
+    @keyframes alertIn{0%,3%{transform:translateX(110%);opacity:0}13%,77%{transform:translateX(0);opacity:1}87%,100%{transform:translateX(-110%);opacity:0}}
+    @keyframes shimmer{0%{left:-100%}100%{left:200%}}
+    @keyframes coinSpin{0%,100%{transform:scaleX(1);opacity:1}40%,60%{transform:scaleX(0.1);opacity:0.6}}
+  </style>
+</helmet>
+<div style="position:relative;width:1920px;height:1080px;overflow:hidden;font-family:'Press Start 2P',monospace;">
+  <sc-if value="{{ active }}">
+    <div style="position:absolute;top:120px;right:22px;animation:alertIn 16s ease-in-out forwards;">
+      <div style="background:rgba(8,6,20,0.97);border:2px solid #FFD060;padding:24px 32px;box-shadow:0 0 40px rgba(255,208,96,0.22),0 8px 32px rgba(0,0,0,0.7);min-width:460px;max-width:560px;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;bottom:0;width:60px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.04),transparent);animation:shimmer 2s ease-in-out infinite;pointer-events:none;"></div>
+        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#E8A020,#FFD060,#fff,#FFD060,#E8A020);"></div>
+        <!-- header row -->
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+          <!-- pixel coin icon -->
+          <svg viewBox="0 0 10 10" width="30" height="30" style="image-rendering:pixelated;flex-shrink:0;animation:coinSpin 2s ease-in-out infinite;" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3" y="0" width="4" height="1" fill="#FFD060"></rect>
+            <rect x="1" y="1" width="8" height="1" fill="#FFD060"></rect>
+            <rect x="0" y="2" width="10" height="6" fill="#FFD060"></rect>
+            <rect x="1" y="8" width="8" height="1" fill="#FFD060"></rect>
+            <rect x="3" y="9" width="4" height="1" fill="#FFD060"></rect>
+            <rect x="3" y="3" width="4" height="1" fill="#E8A020"></rect>
+            <rect x="2" y="4" width="1" height="2" fill="#E8A020"></rect>
+            <rect x="6" y="4" width="2" height="2" fill="#E8A020"></rect>
+            <rect x="3" y="6" width="4" height="1" fill="#E8A020"></rect>
+          </svg>
+          <div style="font-size:11px;color:#FFD060;letter-spacing:0.12em;">DOAÇÃO</div>
+          <div style="margin-left:auto;background:#FFD060;color:#0d0b18;font-size:14px;padding:5px 14px;font-family:'VT323',monospace;letter-spacing:0.06em;flex-shrink:0;">{{ amount }}</div>
+        </div>
+        <!-- username -->
+        <div style="font-family:'VT323',monospace;font-size:58px;color:#f0e6d0;line-height:1.05;margin-bottom:8px;word-break:break-all;">{{ name }}</div>
+        <!-- message -->
+        <div style="font-family:'VT323',monospace;font-size:30px;color:#c8c0a8;font-style:italic;margin-bottom:12px;">"{{ message }}"</div>
+        <!-- divider -->
+        <div style="height:2px;background:linear-gradient(90deg,#FFD060,#E8A020,transparent);margin-bottom:12px;"></div>
+        <div style="font-family:'VT323',monospace;font-size:30px;color:#FFD060;letter-spacing:0.08em;">VALEU DEMAIS, TROPA!</div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1920,&quot;height&quot;:1080}}">
+class Component extends DCLogic {
+  state = { active: false, name: "", message: "", amount: "R$ 10,00" };
+  timeout = null;
+
+  componentDidMount() {
+    this.handleAlert = (e) => {
+      const msg = e.detail;
+      if (msg.type === "alert" && msg.data.alertType === "donation") {
+        if (this.timeout) clearTimeout(this.timeout);
+        this.setState({
+          active: true,
+          name: msg.data.name,
+          message: msg.data.message || "VALEU DEMAIS, TROPA!",
+          amount: msg.data.amount || "R$ 10,00"
+        });
+        this.timeout = setTimeout(() => {
+          this.setState({ active: false });
+        }, 16000);
+      }
+    };
+    window.addEventListener("stream-alert", this.handleAlert);
+    
+    // Auto-visible in preview dashboards
+    if (window.parent !== window || document.body.hasAttribute("data-dc-editor-on")) {
+      this.setState({ active: true, name: "HoodSmoker69", message: "vai lá mano, kk!", amount: "R$ 10,00" });
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.handleAlert) window.removeEventListener("stream-alert", this.handleAlert);
+    if (this.timeout) clearTimeout(this.timeout);
+  }
+
+  renderVals() {
+    return {
+      active: this.state.active,
+      name: this.state.name,
+      message: this.state.message,
+      amount: this.state.amount
+    };
+  }
+}
+</script>
+</body>
+</html>

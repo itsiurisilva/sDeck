@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Unified Streamer Control Center</title>
+
+  <!-- Google Fonts: Outfit & VT323 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=VT323&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Styling -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <h1 class="app-logo">SAMUCA2835 <span>Control</span></h1>
+        <div class="connection-status">
+          <div id="status-server" class="status-indicator disconnected" title="Conexão com o Servidor">
+            <span class="indicator-dot"></span>
+            <span class="indicator-label">SERVIDOR</span>
+          </div>
+          <div id="status-obs" class="status-indicator disconnected" title="Conexão OBS">
+            <span class="indicator-dot"></span>
+            <span class="indicator-label">OBS</span>
+          </div>
+          <div id="status-spotify" class="status-indicator disconnected" title="Conexão Spotify">
+            <span class="indicator-dot"></span>
+            <span class="indicator-label">SPOTIFY</span>
+          </div>
+          <div id="status-stream" class="status-indicator hidden live-badge" title="Status de Transmissão">
+            <span class="indicator-dot"></span>
+            <span class="indicator-label">LIVE</span>
+          </div>
+          <div id="status-record" class="status-indicator hidden record-badge" title="Status de Gravação">
+            <span class="indicator-dot"></span>
+            <span class="indicator-label">REC</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="app-tabs">
+        <button class="tab-btn active" data-tab="tab-deck">
+          <i data-lucide="layout-grid"></i> Stream Deck
+        </button>
+        <button class="tab-btn" data-tab="tab-chat">
+          <i data-lucide="message-square"></i> Chat & Mod
+        </button>
+        <button class="tab-btn" data-tab="tab-soundboard">
+          <i data-lucide="volume-2"></i> Soundboard
+        </button>
+        <button class="tab-btn" data-tab="tab-overlays">
+          <i data-lucide="settings-2"></i> Config & OBS
+        </button>
+      </nav>
+    </header>
+
+    <!-- Main Workspace Content -->
+    <main class="main-workspace">
+
+      <!-- ==================== TAB 1: STREAM DECK ==================== -->
+      <section id="tab-deck" class="tab-content active">
+        <div class="deck-top-bar">
+          <div class="profiles-nav">
+            <div id="profiles-tabs" class="profiles-tabs">
+              <!-- Loaded dynamically -->
+            </div>
+            <div class="profile-action-container">
+              <button id="btn-add-profile" class="add-profile-btn" title="Adicionar Novo Perfil">
+                <i data-lucide="plus"></i>
+              </button>
+              <button id="btn-manage-profiles" class="profile-settings-btn" title="Gerenciar Perfil Ativo">
+                <i data-lucide="settings"></i>
+              </button>
+            </div>
+          </div>
+
+          <label class="edit-toggle" for="edit-mode-checkbox">
+            <span class="toggle-label">Modo Edição</span>
+            <div class="toggle-switch">
+              <input type="checkbox" id="edit-mode-checkbox">
+              <span class="toggle-slider"></span>
+            </div>
+          </label>
+        </div>
+
+        <div class="deck-workspace">
+          <!-- Main Deck Grid Area -->
+          <div class="deck-grid-container">
+            <!-- Favorites Slot Row -->
+            <div class="favorites-bar">
+              <div class="favorites-header">
+                <i data-lucide="star" class="favorites-star-icon"></i>
+                <span>FAVORITOS</span>
+              </div>
+              <div id="favorites-slots" class="favorites-slots">
+                <!-- Loaded dynamically -->
+              </div>
+            </div>
+
+            <!-- Grid Buttons -->
+            <div id="deck-grid" class="deck-grid">
+              <!-- Loaded dynamically -->
+            </div>
+          </div>
+
+          <!-- Drawer Sidebar for Button Editing -->
+          <aside id="editor-drawer" class="editor-drawer hidden">
+            <div class="drawer-header">
+              <h3>Editar Botão</h3>
+              <button id="editor-close" class="close-btn">&times;</button>
+            </div>
+            <div class="drawer-body">
+              <p class="button-coords-label">Posição: Linha <span id="editor-row">0</span>, Coluna <span id="editor-col">0</span></p>
+
+              <form id="editor-form" onsubmit="event.preventDefault();">
+
+                <!-- VISUAL TYPE SELECTOR -->
+                <div class="form-group">
+                  <label>Tipo de Visual</label>
+                  <div class="visual-type-tabs">
+                    <button type="button" class="visual-type-btn active" id="visual-tab-icon">
+                      <i data-lucide="zap"></i> Ícone
+                    </button>
+                    <button type="button" class="visual-type-btn" id="visual-tab-image">
+                      <i data-lucide="image"></i> Imagem
+                    </button>
+                  </div>
+                </div>
+
+                <!-- ICON SECTION -->
+                <div id="visual-icon-section">
+                  <div class="form-group">
+                    <label for="btn-label">Etiqueta do Botão</label>
+                    <input type="text" id="btn-label" placeholder="Ex: Iniciar Stream" maxlength="24">
+                  </div>
+                  <div class="form-group">
+                    <label for="btn-icon">Ícone (Nome Lucide)</label>
+                    <input type="text" id="btn-icon" placeholder="Ex: play, mic, volume-2">
+                    <div class="icon-help">Consulte o site do Lucide Icons para nomes.</div>
+                  </div>
+                  <div class="form-group">
+                    <label for="btn-icon-color">Cor do Ícone</label>
+                    <div class="color-picker-wrapper">
+                      <input type="color" id="btn-icon-color" value="#ffffff">
+                      <input type="text" id="btn-icon-color-text" value="#ffffff" placeholder="#ffffff">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- IMAGE SECTION -->
+                <div id="visual-image-section" style="display:none;">
+                  <div class="form-group">
+                    <label for="btn-label-img">Etiqueta do Botão</label>
+                    <input type="text" id="btn-label-img" placeholder="Ex: Iniciar Stream" maxlength="24">
+                  </div>
+                  <div class="form-group">
+                    <div id="btn-image-drop-zone" class="upload-drop-zone btn-img-upload">
+                      <i data-lucide="image"></i>
+                      <p>Arraste imagem aqui ou <span class="highlight">clique para procurar</span></p>
+                      <input type="file" id="btn-image-input" accept="image/*" style="display:none;">
+                    </div>
+                    <div id="btn-image-preview-container" class="btn-image-preview-container" style="display:none;">
+                      <img id="btn-image-preview" class="btn-image-preview" src="" alt="Preview">
+                      <button type="button" id="btn-remove-image" class="danger-btn">Remover Imagem</button>
+                    </div>
+                    <input type="hidden" id="btn-image-url" value="">
+                  </div>
+                </div>
+
+                <!-- SHARED APPEARANCE -->
+                <div class="form-group">
+                  <label for="btn-color">Cor de Fundo</label>
+                  <div class="color-picker-wrapper">
+                    <input type="color" id="btn-color" value="#3b82f6">
+                    <input type="text" id="btn-color-text" value="#3b82f6" placeholder="#ffffff">
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="btn-text-color">Cor do Texto</label>
+                  <div class="color-picker-wrapper">
+                    <input type="color" id="btn-text-color" value="#ffffff">
+                    <input type="text" id="btn-text-color-text" value="#ffffff" placeholder="#ffffff">
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="btn-glow-color">Cor do Brilho (Glow)</label>
+                  <div class="color-picker-wrapper">
+                    <input type="color" id="btn-glow-color" value="#3b82f6">
+                    <input type="text" id="btn-glow-color-text" value="#3b82f6" placeholder="#ffffff">
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="btn-action-type">Tipo de Ação</label>
+                  <select id="btn-action-type">
+                    <option value="none">Nenhum / Vazio</option>
+                    <option value="obs">Comando OBS</option>
+                    <option value="system">Sistema (Comando / PowerShell / App)</option>
+                    <option value="nav">Mudar Perfil</option>
+                    <option value="sound">Tocar Som (Soundboard)</option>
+                  </select>
+                </div>
+
+                <!-- OBS Action Fields -->
+                <div id="fields-obs" class="action-fields hidden">
+                  <div class="form-group">
+                    <label for="obs-cmd">Comando OBS</label>
+                    <select id="obs-cmd">
+                      <option value="SetCurrentProgramScene">Mudar Cena</option>
+                      <option value="ToggleInputMute">Alternar Mudo</option>
+                      <option value="ToggleStream">Alternar Transmissão (Stream)</option>
+                      <option value="ToggleRecord">Alternar Gravação</option>
+                      <option value="ToggleSourceVisibility">Alternar Visibilidade de Fonte</option>
+                      <option value="Custom">Pedido Personalizado (Custom Request)</option>
+                    </select>
+                  </div>
+
+                  <div id="param-obs-scene" class="form-group obs-param hidden">
+                    <label for="obs-scene-select">Cena de Destino</label>
+                    <select id="obs-scene-select"></select>
+                    <input type="text" id="obs-scene-text" placeholder="Ou digite o nome da cena manualmente" class="mt-1">
+                  </div>
+
+                  <div id="param-obs-input" class="form-group obs-param hidden">
+                    <label for="obs-input-select">Entrada de Áudio</label>
+                    <select id="obs-input-select"></select>
+                    <input type="text" id="obs-input-text" placeholder="Ou digite o nome do canal manualmente" class="mt-1">
+                  </div>
+
+                  <div id="param-obs-source" class="form-group obs-param hidden">
+                    <label for="obs-source-scene-select">Selecionar Cena</label>
+                    <select id="obs-source-scene-select"></select>
+                    <input type="text" id="obs-source-scene-text" placeholder="Nome da cena manualmente" class="mt-1">
+                    <label for="obs-source-name-select" class="mt-1">Selecionar Fonte</label>
+                    <select id="obs-source-name-select"></select>
+                    <input type="text" id="obs-source-name-text" placeholder="Ou nome da fonte manualmente" class="mt-1">
+                  </div>
+
+                  <div id="param-obs-custom" class="form-group obs-param hidden">
+                    <label for="obs-custom-request">Nome do Pedido (Request Type)</label>
+                    <input type="text" id="obs-custom-request" placeholder="Ex: TriggerHotkeyByName">
+                    <label for="obs-custom-params" class="mt-1">Parâmetros (JSON string)</label>
+                    <textarea id="obs-custom-params" rows="3" placeholder='{"hotkeyName": "my_hotkey"}'></textarea>
+                  </div>
+                </div>
+
+                <!-- System Action Fields -->
+                <div id="fields-system" class="action-fields hidden">
+                  <div class="form-group">
+                    <label for="system-cmd">Comando do Terminal / PowerShell</label>
+                    <textarea id="system-cmd" rows="3" placeholder="Ex: start chrome, ou script powershell para teclas de mídia"></textarea>
+                    <div class="icon-help">Será executado pelo servidor no PC.</div>
+                  </div>
+                </div>
+
+                <!-- Navigation Action Fields -->
+                <div id="fields-nav" class="action-fields hidden">
+                  <div class="form-group">
+                    <label for="nav-target-profile">Perfil Alvo</label>
+                    <select id="nav-target-profile"></select>
+                  </div>
+                </div>
+
+                <!-- Sound Action Fields -->
+                <div id="fields-sound" class="action-fields hidden">
+                  <div class="form-group">
+                    <label for="sound-select">Selecionar Som</label>
+                    <select id="sound-select"></select>
+                  </div>
+                </div>
+
+                <div class="editor-buttons">
+                  <button type="button" id="btn-save-action" class="primary-btn">Salvar Alterações</button>
+                  <button type="button" id="btn-clear-action" class="danger-btn">Limpar Botão</button>
+                </div>
+              </form>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ==================== TAB: CHAT & MOD ==================== -->
+      <section id="tab-chat" class="tab-content">
+        <div class="chat-mod-container">
+          <div class="chat-iframe-wrapper">
+            <div id="chat-no-user-message" class="empty-state" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);z-index:5;text-align:center;padding:20px;">
+              <div>
+                <i data-lucide="message-square" style="width:48px;height:48px;color:var(--text-dim);margin-bottom:10px;"></i>
+                <p>Insira seu username da Twitch nas configurações para carregar o chat.</p>
+              </div>
+            </div>
+            <iframe id="twitch-chat-iframe" src="" height="100%" width="100%"></iframe>
+          </div>
+
+          <aside class="card glass mod-panel-card" style="padding:1.25rem;">
+            <div class="card-header" style="margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;">
+              <i data-lucide="shield-alert" style="color:var(--neon-cyan);"></i>
+              <h2 style="font-size:1.2rem;">Moderação Rápida</h2>
+            </div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:1rem;flex:1;">
+              <div class="mod-actions-grid">
+                <button class="mod-btn clear-btn" id="btn-mod-clear"><i data-lucide="trash-2"></i> Limpar Chat</button>
+                <button class="mod-btn sub-mode-btn" id="btn-mod-subonly"><i data-lucide="lock"></i> Subs Only</button>
+                <button class="mod-btn sub-mode-btn" id="btn-mod-subonlyoff"><i data-lucide="unlock"></i> Subs Off</button>
+                <button class="mod-btn emote-mode-btn" id="btn-mod-emoteonly"><i data-lucide="smile"></i> Emotes Only</button>
+                <button class="mod-btn emote-mode-btn" id="btn-mod-emoteonlyoff"><i data-lucide="frown"></i> Emotes Off</button>
+                <button class="mod-btn ad-btn" id="btn-mod-commercial"><i data-lucide="tv"></i> Ad 30s</button>
+              </div>
+              <div class="mod-ext-links">
+                <a id="twitch-modview-link" href="#" target="_blank" class="mod-link-card">
+                  <span>Mod View Twitch</span>
+                  <i data-lucide="external-link"></i>
+                </a>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ==================== TAB: SOUNDBOARD ==================== -->
+      <section id="tab-soundboard" class="tab-content">
+        <div class="soundboard-grid">
+          <div class="card glass">
+            <div class="card-header">
+              <i data-lucide="sparkles" style="color:var(--neon-magenta);"></i>
+              <h2>Sintetizador de Efeitos</h2>
+            </div>
+            <div class="card-body">
+              <div class="sound-section-grid">
+                <button class="soundboard-btn synth-effect" data-sound="airhorn"><i data-lucide="wind"></i> Airhorn</button>
+                <button class="soundboard-btn synth-effect" data-sound="siren"><i data-lucide="megaphone"></i> Sirene</button>
+                <button class="soundboard-btn synth-effect" data-sound="coin"><i data-lucide="coins"></i> Moeda / Coin</button>
+                <button class="soundboard-btn synth-effect" data-sound="laser"><i data-lucide="zap"></i> Laser</button>
+                <button class="soundboard-btn synth-effect" data-sound="boom"><i data-lucide="bomb"></i> Boom</button>
+                <button class="soundboard-btn synth-effect" data-sound="success"><i data-lucide="check-circle"></i> Sucesso</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card glass">
+            <div class="card-header">
+              <i data-lucide="upload-cloud" style="color:var(--neon-cyan);"></i>
+              <h2>Sons Customizados</h2>
+            </div>
+            <div class="card-body">
+              <div id="sound-upload-zone" class="upload-drop-zone">
+                <i data-lucide="file-audio"></i>
+                <p>Arraste arquivos de som aqui ou <span class="highlight">clique para procurar</span></p>
+                <input type="file" id="sound-file-input" accept="audio/*" style="display:none;">
+              </div>
+              <div class="soundboard-list-container">
+                <div id="soundboard-custom-list">
+                  <div class="empty-state">Carregando lista de sons...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== TAB: CONFIG & OBS (merged) ==================== -->
+      <section id="tab-overlays" class="tab-content">
+        <div class="config-scroll-container">
+
+          <!-- ============================================================ -->
+          <!-- OBS STUDIO                                                    -->
+          <!-- ============================================================ -->
+          <details class="cfg-section" id="cfg-sec-obs" open>
+            <summary class="cfg-section-header">
+              <div class="cfg-section-title-group">
+                <i data-lucide="video"></i>
+                <span>OBS Studio</span>
+              </div>
+              <div class="cfg-section-right">
+                <span class="cfg-section-desc">Cenas, fontes e áudio</span>
+                <i data-lucide="chevron-down" class="cfg-chevron"></i>
+              </div>
+            </summary>
+            <div class="cfg-section-body">
+              <div class="cfg-grid-2">
+
+                <!-- LEFT: Conexão + Áudio -->
+                <div>
+                  <!-- Conexão WebSocket -->
+                  <details class="cfg-subsection" open>
+                    <summary>
+                      <i data-lucide="plug"></i>
+                      <span>Conexão WebSocket</span>
+                      <i data-lucide="chevron-right" class="cfg-sub-chevron"></i>
+                    </summary>
+                    <div class="cfg-subsection-body">
+                      <div class="obs-connection-panel mb-2">
+                        <div class="obs-quick-actions">
+                          <button id="btn-obs-connect" class="primary-btn flex-1">Conectar ao OBS</button>
+                          <button id="btn-obs-disconnect" class="danger-btn flex-1">Desconectar</button>
+                        </div>
+                      </div>
+                      <form id="obs-settings-form" class="settings-form">
+                        <div class="form-row">
+                          <div class="form-group flex-2">
+                            <label for="obs-host">Endereço IP / Host</label>
+                            <input type="text" id="obs-host" class="glass-input" placeholder="localhost">
+                          </div>
+                          <div class="form-group flex-1">
+                            <label for="obs-port">Porta</label>
+                            <input type="text" id="obs-port" class="glass-input" placeholder="4455">
+                          </div>
+                        </div>
+                        <div class="form-group">
+                          <label for="obs-password">Senha de Autenticação</label>
+                          <input type="password" id="obs-password" class="glass-input" placeholder="Senha do OBS WebSocket">
+                        </div>
+                        <div class="form-group checkbox-label-container">
+                          <label for="obs-autoconnect" class="checkbox-label">
+                            <span>Conectar automaticamente ao iniciar</span>
+                            <input type="checkbox" id="obs-autoconnect">
+                          </label>
+                        </div>
+                        <div class="form-actions">
+                          <button type="submit" class="primary-btn">Salvar e Conectar</button>
+                        </div>
+                      </form>
+                    </div>
+                  </details>
+
+                  <!-- Canais de Áudio -->
+                  <details class="cfg-subsection">
+                    <summary>
+                      <i data-lucide="sliders"></i>
+                      <span>Canais de Áudio</span>
+                      <i data-lucide="chevron-right" class="cfg-sub-chevron"></i>
+                    </summary>
+                    <div class="cfg-subsection-body">
+                      <div id="obs-audio-inputs-list" class="obs-list">
+                        <div class="empty-state">Ligue o OBS para visualizar canais de áudio.</div>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+
+                <!-- RIGHT: Cenas + Fontes -->
+                <div>
+                  <!-- Cenas -->
+                  <details class="cfg-subsection" open>
+                    <summary>
+                      <i data-lucide="film"></i>
+                      <span>Cenas</span>
+                      <i data-lucide="chevron-right" class="cfg-sub-chevron"></i>
+                    </summary>
+                    <div class="cfg-subsection-body">
+                      <div class="active-scene-banner mb-2">
+                        <span class="active-scene-label">Cena Atual:</span>
+                        <span id="active-scene-name" class="active-scene-val">Nenhuma</span>
+                      </div>
+                      <div id="obs-scenes-list" class="obs-list font-vt323-retro">
+                        <div class="empty-state">Ligue o OBS para listar cenas.</div>
+                      </div>
+                    </div>
+                  </details>
+
+                  <!-- Fontes da Cena -->
+                  <details class="cfg-subsection">
+                    <summary>
+                      <i data-lucide="layers"></i>
+                      <span>Fontes da Cena Atual</span>
+                      <i data-lucide="chevron-right" class="cfg-sub-chevron"></i>
+                    </summary>
+                    <div class="cfg-subsection-body">
+                      <div id="obs-sources-list" class="obs-list">
+                        <div class="empty-state">Ligue o OBS para listar fontes.</div>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+
+              </div>
+            </div>
+          </details>
+
+          <!-- ============================================================ -->
+          <!-- OVERLAYS & BROWSER SOURCES                                   -->
+          <!-- ============================================================ -->
+          <details class="cfg-section" id="cfg-sec-overlays">
+            <summary class="cfg-section-header">
+              <div class="cfg-section-title-group">
+                <i data-lucide="external-link"></i>
+                <span>Overlays & Browser Sources</span>
+              </div>
+              <div class="cfg-section-right">
+                <span class="cfg-section-desc">Links das fontes de navegador para OBS</span>
+                <i data-lucide="chevron-down" class="cfg-chevron"></i>
+              </div>
+            </summary>
+            <div class="cfg-section-body">
+              <div class="card glass" style="padding:1.25rem;">
+                <div class="links-list">
+                  <div class="link-item">
+                    <span class="link-title">Follower Alert</span>
+                    <a href="/overlays/Follower Alert.dc.html" target="_blank" class="overlay-link">/overlays/Follower Alert.dc.html</a>
+                  </div>
+                  <div class="link-item">
+                    <span class="link-title">Sub Alert</span>
+                    <a href="/overlays/Sub Alert.dc.html" target="_blank" class="overlay-link">/overlays/Sub Alert.dc.html</a>
+                  </div>
+                  <div class="link-item">
+                    <span class="link-title">Donation Alert</span>
+                    <a href="/overlays/Donation Alert.dc.html" target="_blank" class="overlay-link">/overlays/Donation Alert.dc.html</a>
+                  </div>
+                  <div class="link-item">
+                    <span class="link-title">Spotify Overlay — Disc</span>
+                    <a href="/overlays/Now Playing - Disc.dc.html" target="_blank" class="overlay-link">/overlays/Now Playing - Disc.dc.html</a>
+                  </div>
+                  <div class="link-item">
+                    <span class="link-title">Spotify Overlay — Bars</span>
+                    <a href="/overlays/Now Playing - Bars.dc.html" target="_blank" class="overlay-link">/overlays/Now Playing - Bars.dc.html</a>
+                  </div>
+                  <div class="link-item">
+                    <span class="link-title">Retro Game Overlay</span>
+                    <a href="/screens/02 Game Overlay.dc.html" target="_blank" class="overlay-link">/screens/02 Game Overlay.dc.html</a>
+                  </div>
+                  <div class="link-item">
+                    <span class="link-title">Just Chatting Screen</span>
+                    <a href="/screens/01 Just Chatting.dc.html" target="_blank" class="overlay-link">/screens/01 Just Chatting.dc.html</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <!-- ============================================================ -->
+          <!-- SPOTIFY                                                       -->
+          <!-- ============================================================ -->
+          <details class="cfg-section" id="cfg-sec-spotify">
+            <summary class="cfg-section-header">
+              <div class="cfg-section-title-group">
+                <i data-lucide="music"></i>
+                <span>Spotify</span>
+              </div>
+              <div class="cfg-section-right">
+                <span class="cfg-section-desc">Player e integração</span>
+                <i data-lucide="chevron-down" class="cfg-chevron"></i>
+              </div>
+            </summary>
+            <div class="cfg-section-body">
+              <div class="cfg-grid-2">
+
+                <!-- Player -->
+                <details class="cfg-subsection" open>
+                  <summary>
+                    <i data-lucide="play-circle"></i>
+                    <span>Player</span>
+                    <i data-lucide="chevron-right" class="cfg-sub-chevron"></i>
+                  </summary>
+                  <div class="cfg-subsection-body">
+                    <div class="spotify-controller-card card glass" style="padding:1.25rem;">
+                      <div class="spotify-player">
+                        <div class="spotify-track-info">
+                          <div id="spotify-art" class="spotify-album-art">
+                            <i data-lucide="music"></i>
+                          </div>
+                          <div class="spotify-track-meta">
+                            <div id="spotify-track" class="spotify-track-title">Nenhuma música tocando</div>
+                            <div id="spotify-artist" class="spotify-track-artist">Spotify Player</div>
+                          </div>
+                        </div>
+                        <div class="spotify-progress-bar-wrapper">
+                          <div id="spotify-timeline" class="spotify-timeline">
+                            <div id="spotify-progress-fill" class="spotify-progress-fill"></div>
+                          </div>
+                          <div class="spotify-time-labels">
+                            <span id="spotify-time-cur">0:00</span>
+                            <span id="spotify-time-total">0:00</span>
+                          </div>
+                        </div>
+                        <div class="spotify-controls">
+                          <button class="spotify-ctrl-btn" id="spotify-btn-prev"><i data-lucide="skip-back"></i></button>
+                          <button id="spotify-btn-play-pause" class="spotify-ctrl-btn play-pause-btn"><i data-lucide="play"></i></button>
+                          <button class="spotify-ctrl-btn" id="spotify-btn-next"><i data-lucide="skip-forward"></i></button>
+                        </div>
+                        <div class="spotify-volume-widget">
+                          <i data-lucide="volume-1"></i>
+                          <input type="range" id="spotify-volume-slider" class="spotify-volume-slider" min="0" max="100" value="50">
+                          <i data-lucide="volume-2"></i>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </details>
+
+                <!-- Integração -->
+                <details class="cfg-subsection" open>
+                  <summary>
+                    <i data-lucide="settings"></i>
+                    <span>Integração</span>
+                    <i data-lucide="chevron-right" class="cfg-sub-chevron"></i>
+                  </summary>
+                  <div class="cfg-subsection-body">
+                    <div class="card glass" style="padding:1.25rem;">
+                      <div class="spotify-status-panel mb-2">
+                        <div id="spotify-status-text" class="status-badge disconnected">Não Conectado</div>
+                        <button id="btn-spotify-auth" class="spotify-login-btn hidden">
+                          <i data-lucide="log-in"></i> Conectar Spotify
+                        </button>
+                      </div>
+                      <form id="spotify-settings-form" class="settings-form mt-2">
+                        <div class="form-group">
+                          <label for="spotify-client-id">Spotify Client ID</label>
+                          <input type="password" id="spotify-client-id" class="glass-input" placeholder="Insira o Client ID">
+                        </div>
+                        <div class="form-group">
+                          <label for="spotify-client-secret">Spotify Client Secret</label>
+                          <input type="password" id="spotify-client-secret" class="glass-input" placeholder="Insira o Client Secret">
+                        </div>
+                        <div class="form-actions">
+                          <button type="submit" class="primary-btn">Salvar Credenciais</button>
+                        </div>
+                      </form>
+                      <div class="info-box mt-2">
+                        <strong>Instruções:</strong>
+                        <p>Crie um app no <a href="https://developer.spotify.com/dashboard" target="_blank">Developer Dashboard</a>. Adicione <code>http://localhost:3000/callback</code> como URI de redirecionamento.</p>
+                      </div>
+                    </div>
+                  </div>
+                </details>
+
+              </div>
+            </div>
+          </details>
+
+          <!-- ============================================================ -->
+          <!-- STREAMLABS                                                    -->
+          <!-- ============================================================ -->
+          <details class="cfg-section" id="cfg-sec-streamlabs">
+            <summary class="cfg-section-header">
+              <div class="cfg-section-title-group">
+                <i data-lucide="layers"></i>
+                <span>Streamlabs</span>
+              </div>
+              <div class="cfg-section-right">
+                <span class="cfg-section-desc">Alertas e Socket API</span>
+                <i data-lucide="chevron-down" class="cfg-chevron"></i>
+              </div>
+            </summary>
+            <div class="cfg-section-body">
+              <div class="card glass" style="padding:1.25rem;max-width:600px;">
+                <div class="streamlabs-status-panel mb-2">
+                  <div id="streamlabs-status-text" class="status-badge disconnected">Alertas Desconectados</div>
+                </div>
+                <form id="streamlabs-settings-form" class="settings-form mt-2">
+                  <div class="form-group">
+                    <label for="streamlabs-token">Token da API Socket</label>
+                    <input type="password" id="streamlabs-token" class="glass-input" placeholder="Insira o Socket Token">
+                  </div>
+                  <div class="form-actions">
+                    <button type="submit" class="primary-btn">Salvar Token</button>
+                  </div>
+                </form>
+                <div class="info-box mt-2">
+                  <strong>Como obter:</strong>
+                  <p>Streamlabs Dashboard ➔ Configurações ➔ API Settings ➔ API Tokens ➔ Copie o <strong>Your Socket API Token</strong>.</p>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <!-- ============================================================ -->
+          <!-- STREAM & ALERTAS                                              -->
+          <!-- ============================================================ -->
+          <details class="cfg-section" id="cfg-sec-stream">
+            <summary class="cfg-section-header">
+              <div class="cfg-section-title-group">
+                <i data-lucide="activity"></i>
+                <span>Stream & Alertas</span>
+              </div>
+              <div class="cfg-section-right">
+                <span class="cfg-section-desc">Dados da transmissão, testes e histórico</span>
+                <i data-lucide="chevron-down" class="cfg-chevron"></i>
+              </div>
+            </summary>
+            <div class="cfg-section-body">
+              <div class="cfg-grid-2">
+
+                <!-- LEFT: Dados + Twitch config -->
+                <div>
+                  <!-- Dados da Transmissão -->
+                  <details class="cfg-subsection" open>
+                    <summary>
+                      <i data-lucide="radio"></i>
+                      <span>Dados da Transmissão</span>
+                      <i data-lucide="chevron-right" class="cfg-sub-chevron"></i>
+                    </summary>
+                    <div class="cfg-subsection-body">
+                      <div class="card glass" style="padding:1.25rem;">
+                        <form id="stream-info-form" class="settings-form">
+                          <div class="form-row">
+                            <div class="form-group flex-1">
+                              <label for="viewer-count-input">Espectadores</label>
+                              <input type="number" id="viewer-count-input" class="glass-input" value="0">
+                            </div>
+                            <div class="form-group flex-1">
+                              <label for="is-live-checkbox" class="checkbox-label">
+                                <span>Transmitindo (Live)</span>
+                                <input type="checkbox" id="is-live-checkbox">
+                              </label>
+                            </div>
+                          </div>
+                          <div class="form-group">
+                            <label for="twitch-username-input">Twitch Username</label>
+                            <input type="text" id="twitch-username-input" class="glass-input" placeholder="Ex: samuca2835">
+                          </div>
+                          <div class="form-actions mt-1">
+                            <button type="submit" class="primary-btn">Atualizar Estado</button>
+                          </div>
+                        </form>
+                        <div class="twitch-data-summary mt-2">
+                          <div class="summary-item">
+                            <span class="summary-label">Último Seguidor:</span>
+                            <span id="twitch-follower" class="summary-val">...</span>
+                          </div>
+                          <div class="summary-item">
+                            <span class="summary-label">Último Subscritor:</span>
+                            <span id="twitch-subscriber" class="summary-val">...</span>
+                          </div>
+                          <div class="summary-item">
+                            <span class="summary-label">Última Doação:</span>
+                            <span id="twitch-donation" class="summary-val">...</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+
+                <!-- RIGHT: Disparar Alerta + Histórico -->
+                <div>
+                  <!-- Disparar Alertas de Teste -->
+                  <details class="cfg-subsection" open>
+                    <summary>
+                      <i data-lucide="bell"></i>
+                      <span>Disparar Alertas de Teste</span>
+                      <i data-lucide="chevron-right" class="cfg-sub-chevron"></i>
+                    </summary>
+                    <div class="cfg-subsection-body">
+                      <div class="card glass" style="padding:1.25rem;">
+                        <form id="test-alert-form" class="settings-form">
+                          <div class="form-group">
+                            <label for="test-alert-type">Tipo de Alerta</label>
+                            <select id="test-alert-type">
+                              <option value="follow">Novo Seguidor (Follow)</option>
+                              <option value="sub">Novo Subscritor (Subscription)</option>
+                              <option value="donation">Doação (Donation)</option>
+                            </select>
+                          </div>
+                          <div class="form-group">
+                            <label for="test-alert-name">Nome do Usuário</label>
+                            <input type="text" id="test-alert-name" class="glass-input" placeholder="Ex: HoodSmoker69">
+                          </div>
+                          <div class="form-group">
+                            <label for="test-alert-message">Mensagem Personalizada</label>
+                            <input type="text" id="test-alert-message" class="glass-input" placeholder="Ex: Valeu mano, tmj!">
+                          </div>
+                          <div id="test-donation-group" class="form-group hidden">
+                            <label for="test-alert-amount">Valor</label>
+                            <input type="text" id="test-alert-amount" class="glass-input" placeholder="Ex: R$ 15,00">
+                          </div>
+                          <div id="test-sub-group" class="form-group hidden">
+                            <label for="test-alert-tier">Nível do Sub (Tier)</label>
+                            <select id="test-alert-tier">
+                              <option value="TIER 1">Nível 1 (Tier 1)</option>
+                              <option value="TIER 2">Nível 2 (Tier 2)</option>
+                              <option value="TIER 3">Nível 3 (Tier 3)</option>
+                            </select>
+                          </div>
+                          <div class="form-actions">
+                            <button type="submit" class="primary-btn">
+                              <i data-lucide="send"></i> Disparar Alerta
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </details>
+
+                  <!-- Histórico de Alertas -->
+                  <details class="cfg-subsection">
+                    <summary>
+                      <i data-lucide="history"></i>
+                      <span>Histórico de Alertas</span>
+                      <i data-lucide="chevron-right" class="cfg-sub-chevron"></i>
+                    </summary>
+                    <div class="cfg-subsection-body">
+                      <div id="alerts-history-log" class="alerts-log">
+                        <div class="log-empty-state">Sem alertas recebidos nesta sessão.</div>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+
+              </div>
+            </div>
+          </details>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Modal: Profile Settings -->
+  <div id="profile-management-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3><i data-lucide="settings" style="color:var(--neon-cyan);"></i> Configurar Perfil</h3>
+        <button id="profile-modal-close" class="close-btn" style="background:none;border:none;color:var(--text-muted);font-size:1.5rem;cursor:pointer;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="profile-settings-form" onsubmit="event.preventDefault();">
+          <div class="form-group">
+            <label for="profile-rename-input">Nome do Perfil</label>
+            <input type="text" id="profile-rename-input" class="glass-input" placeholder="Ex: Cenas do Jogo">
+          </div>
+          <div class="form-row mt-1">
+            <div class="form-group flex-1">
+              <label for="profile-rows-select">Linhas (Rows)</label>
+              <select id="profile-rows-select" class="glass-input">
+                <option value="1">1</option><option value="2">2</option>
+                <option value="3">3</option><option value="4">4</option>
+                <option value="5">5</option><option value="6">6</option>
+                <option value="7">7</option><option value="8">8</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label for="profile-cols-select">Colunas (Cols)</label>
+              <select id="profile-cols-select" class="glass-input">
+                <option value="1">1</option><option value="2">2</option>
+                <option value="3">3</option><option value="4">4</option>
+                <option value="5">5</option><option value="6">6</option>
+                <option value="7">7</option><option value="8">8</option>
+                <option value="9">9</option><option value="10">10</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <button type="button" id="btn-save-profile-settings" class="primary-btn" style="width: 100%;">Salvar Configurações</button>
+            <button type="button" id="btn-delete-profile" class="danger-btn" style="width: 100%;">Excluir Perfil</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast-notification" class="toast-notification hidden">
+    <div id="toast-message">Mensagem de aviso</div>
+  </div>
+
+  <!-- Global scripts -->
+  <script src="js/app.js"></script>
+</body>
+</html>

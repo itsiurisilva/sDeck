@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap" rel="stylesheet">
+  <style>
+    html,body{background:transparent!important;margin:0;padding:0;overflow:hidden;}
+    @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+    @keyframes scanMove{0%{left:0}100%{left:1920px}}
+    @keyframes tickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+  </style>
+</helmet>
+<svg style="display:none;" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="leaf-top" viewBox="0 0 16 16">
+    <rect x="7" y="13" width="2" height="3" fill="#4aba5a"></rect>
+    <rect x="6" y="8" width="4" height="5" fill="#3d9e46"></rect>
+    <rect x="7" y="5" width="2" height="5" fill="#3d9e46"></rect>
+    <rect x="3" y="9" width="3" height="2" fill="#4aba5a"></rect>
+    <rect x="2" y="7" width="3" height="2" fill="#4aba5a"></rect>
+    <rect x="4" y="5" width="2" height="2" fill="#4aba5a"></rect>
+    <rect x="10" y="9" width="3" height="2" fill="#4aba5a"></rect>
+    <rect x="11" y="7" width="3" height="2" fill="#4aba5a"></rect>
+    <rect x="10" y="5" width="2" height="2" fill="#4aba5a"></rect>
+    <rect x="7" y="3" width="2" height="3" fill="#4aba5a"></rect>
+    <rect x="5" y="7" width="2" height="2" fill="#4aba5a"></rect>
+    <rect x="9" y="7" width="2" height="2" fill="#4aba5a"></rect>
+  </symbol>
+</svg>
+<div style="position:relative;width:1920px;height:1080px;overflow:hidden;font-family:'Press Start 2P',monospace;">
+  <div style="position:absolute;top:0;left:0;width:1920px;height:80px;background:rgba(8,6,20,0.97);border-bottom:3px solid #E8A020;display:flex;align-items:center;padding:0 36px;gap:20px;box-sizing:border-box;overflow:hidden;">
+    <!-- scan shimmer -->
+    <div style="position:absolute;top:0;bottom:0;width:3px;background:rgba(255,255,255,0.04);animation:scanMove 5s linear infinite;pointer-events:none;"></div>
+    <!-- leaf -->
+    <svg viewBox="0 0 16 16" width="34" height="34" style="image-rendering:pixelated;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg"><use href="#leaf-top"></use></svg>
+    <!-- channel name -->
+    <div style="font-size:26px;color:#E8A020;letter-spacing:0.06em;text-shadow:0 0 24px rgba(232,160,32,0.45);white-space:nowrap;flex-shrink:0;">SAMUCA2835</div>
+    <!-- 420 badge -->
+    <div style="background:#3d9e46;color:#f0e6d0;font-size:11px;padding:6px 13px;letter-spacing:0.08em;flex-shrink:0;">420</div>
+    <!-- ticker -->
+    <div style="flex:1;overflow:hidden;height:80px;display:flex;align-items:center;position:relative;">
+      <div style="white-space:nowrap;animation:tickerScroll 22s linear infinite;display:inline-block;">
+        <span style="font-family:'VT323',monospace;font-size:30px;color:#4a3f5a;padding-right:80px;">♪ MÚSICA: {{ trackName || 'Nenhuma' }} — {{ artistName || 'Spotify' }} · ÚLTIMO SEGUIDOR: {{ latestFollower || 'Nenhum' }} · LIVE: {{ isLive ? 'SIM' : 'NÃO' }} ·</span>
+        <span style="font-family:'VT323',monospace;font-size:30px;color:#4a3f5a;padding-right:80px;">♪ MÚSICA: {{ trackName || 'Nenhuma' }} — {{ artistName || 'Spotify' }} · ÚLTIMO SEGUIDOR: {{ latestFollower || 'Nenhum' }} · LIVE: {{ isLive ? 'SIM' : 'NÃO' }} ·</span>
+      </div>
+    </div>
+    <!-- LIVE indicator -->
+    <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+      <div style="width:12px;height:12px;background:{{ isLive ? '#FF3300' : '#4a3f5a' }};border-radius:50%;animation:{{ isLive ? 'blink 1s step-start infinite' : 'none' }};box-shadow:{{ isLive ? '0 0 8px rgba(255,51,0,0.8)' : 'none' }};"></div>
+      <span style="font-size:16px;color:{{ isLive ? '#E8A020' : '#4a3f5a' }};letter-spacing:0.12em;">{{ isLive ? 'LIVE' : 'OFFLINE' }}</span>
+    </div>
+    <!-- divider -->
+    <div style="width:1px;height:32px;background:rgba(232,160,32,0.25);flex-shrink:0;"></div>
+    <!-- viewer count -->
+    <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+      <svg viewBox="0 0 12 8" width="24" height="16" style="image-rendering:pixelated;" xmlns="http://www.w3.org/2000/svg">
+        <rect x="3" y="0" width="6" height="1" fill="#E8A020"></rect>
+        <rect x="1" y="1" width="10" height="1" fill="#E8A020"></rect>
+        <rect x="0" y="2" width="12" height="4" fill="#E8A020"></rect>
+        <rect x="4" y="2" width="4" height="4" fill="#0d0b18"></rect>
+        <rect x="5" y="3" width="2" height="2" fill="#f0e6d0"></rect>
+        <rect x="1" y="6" width="10" height="1" fill="#E8A020"></rect>
+        <rect x="3" y="7" width="6" height="1" fill="#E8A020"></rect>
+      </svg>
+      <span style="font-family:'VT323',monospace;font-size:38px;color:#f0e6d0;line-height:1;">{{ viewerCount || 0 }}</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1920,&quot;height&quot;:1080}}"></script>
+</body>
+</html>

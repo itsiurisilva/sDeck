@@ -1,0 +1,17 @@
+{
+  "name": "streamerdeck-control-unified",
+  "version": "1.0.0",
+  "description": "Unified Streamer Deck and OBS Overlays Control application",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.1",
+    "multer": "^2.2.0",
+    "obs-websocket-js": "^5.0.5",
+    "open": "^10.1.0",
+    "ws": "^8.18.0"
+  }
+}

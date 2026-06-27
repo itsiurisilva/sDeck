@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap" rel="stylesheet">
+  <style>
+    html,body{background:transparent!important;margin:0;padding:0;overflow:hidden;}
+    @keyframes eqBar{0%,100%{transform:scaleY(0.1)}50%{transform:scaleY(1)}}
+    @keyframes widgetGlow{0%,100%{box-shadow:0 0 18px rgba(232,160,32,0.1)}50%{box-shadow:0 0 36px rgba(232,160,32,0.22)}}
+  </style>
+</helmet>
+<div style="position:relative;width:1920px;height:1080px;overflow:hidden;font-family:'Press Start 2P',monospace;">
+  <div style="position:absolute;bottom:22px;left:660px;width:600px;background:rgba(8,6,20,0.95);border:2px solid #E8A020;padding:18px 22px;box-sizing:border-box;animation:widgetGlow 3s ease-in-out infinite;">
+    <div style="font-size:10px;color:#E8A020;letter-spacing:0.14em;margin-bottom:10px;">♪ NOW PLAYING</div>
+    <div style="height:68px;display:flex;gap:3px;align-items:flex-end;overflow:hidden;margin-bottom:14px;">{{ bars }}</div>
+    <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(232,160,32,0.35),transparent);margin-bottom:12px;"></div>
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;">
+      <div style="min-width:0;flex:1;">
+        <div style="font-family:'VT323',monospace;font-size:40px;color:#f0e6d0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;">{{ trackName || 'Nenhuma música' }}</div>
+        <div style="font-family:'VT323',monospace;font-size:28px;color:#E8A020;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;">{{ artistName || 'Spotify' }}</div>
+      </div>
+      <div style="flex-shrink:0;text-align:right;">
+        <div style="font-family:'VT323',monospace;font-size:22px;color:#3d9e46;margin-bottom:2px;">{{ progress || '0:00' }} / {{ duration || '0:00' }}</div>
+        <div style="height:4px;width:96px;background:rgba(255,255,255,0.07);position:relative;border-radius:2px;">
+          <div style="position:absolute;left:0;top:0;height:100%;width:{{ progressPercent || 0 }}%;background:linear-gradient(90deg,#FF6600,#E8A020);border-radius:2px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1920,&quot;height&quot;:1080}}">
+class Component extends DCLogic {
+  state = { bars: null };
+  componentDidMount() {
+    const colors = [
+      'linear-gradient(0deg,#FF3300,#FF6600,#E8A020)',
+      'linear-gradient(0deg,#FF4400,#FF8800,#E8C020)',
+      'linear-gradient(0deg,#DD7700,#E8A020,#FFD060)',
+      'linear-gradient(0deg,#CC6600,#FF8800,#FFD060)',
+    ];
+    const bars = Array.from({ length: 36 }, (_, i) => {
+      const dur = (1.0 + (i * 0.13) % 1.4).toFixed(2);
+      const delay = ((i * 0.038) % 0.52).toFixed(2);
+      return React.createElement('div', {
+        key: i,
+        style: { flex: 1, background: colors[i % 4], animation: `eqBar ${dur}s ease-in-out infinite ${delay}s`, transformOrigin: 'bottom', height: '100%', opacity: 0.85 }
+      });
+    });
+    this.setState({ bars });
+  }
+  renderVals() { return { bars: this.state.bars || [] }; }
+}
+</script>
+</body>
+</html>
