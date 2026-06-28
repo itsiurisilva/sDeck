@@ -194,6 +194,12 @@
     if (expr[0] === "(" && expr[expr.length - 1] === ")" && parensWrapWhole(expr)) {
       return resolve(vals, expr.slice(1, -1));
     }
+    const orIdx = findTopLevelOr(expr);
+    if (orIdx !== -1) {
+      const lv = resolve(vals, expr.slice(0, orIdx));
+      if (lv) return lv;
+      return resolve(vals, expr.slice(orIdx + 2));
+    }
     const eq = findTopLevelEquality(expr);
     if (eq) {
       const lv = resolve(vals, expr.slice(0, eq.index));
@@ -245,6 +251,18 @@
       }
     }
     return null;
+  }
+  function findTopLevelOr(expr) {
+    let depth = 0;
+    for (let i = 0; i < expr.length - 1; i++) {
+      const c = expr[i];
+      if (c === "[" || c === "(") depth++;
+      else if (c === "]" || c === ")") depth--;
+      else if (depth === 0 && c === "|" && expr[i + 1] === "|") {
+        return i;
+      }
+    }
+    return -1;
   }
   function resolvePath(vals, expr) {
     const head = expr.match(IDENT_RE);
@@ -1533,7 +1551,12 @@
                 isLive: msg.data.isLive,
                 latestFollower: msg.data.latestFollower,
                 latestSub: msg.data.latestSub,
-                latestDonation: msg.data.latestDonation
+                latestDonation: msg.data.latestDonation,
+                twitchUsername: msg.data.twitchUsername || 'Streamer',
+                twitterHandle: msg.data.twitterHandle || '',
+                instagramHandle: msg.data.instagramHandle || '',
+                tiktokHandle: msg.data.tiktokHandle || '',
+                youtubeHandle: msg.data.youtubeHandle || ''
               });
             }
           } catch (err) {

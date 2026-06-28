@@ -1,0 +1,25 @@
+{
+  "firstSetupCompleted": false,
+  "obs": {
+    "host": "localhost",
+    "port": "4455",
+    "password": "",
+    "autoConnect": true
+  },
+  "spotify": {
+    "client_id": "",
+    "client_secret": "",
+    "access_token": "",
+    "refresh_token": ""
+  },
+  "streamlabs": {
+    "token": ""
+  },
+  "server": {
+    "port": 3000
+  },
+  "twitch": {
+    "username": "",
+    "chatToken": ""
+  }
+}

@@ -1,0 +1,480 @@
+{
+  "activeProfile": "obs_control",
+  "profiles": {
+    "obs_control": {
+      "id": "obs_control",
+      "name": "Index",
+      "rows": 4,
+      "cols": 10,
+      "buttons": {
+        "0-0": {
+          "label": "Start Stream",
+          "icon": "power",
+          "image": null,
+          "color": "#ff3232",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#ffffff",
+          "colSpan": 1,
+          "rowSpan": 3,
+          "actionType": "obs",
+          "actionData": {
+            "command": "ToggleStream",
+            "params": {}
+          }
+        },
+        "0-1": {
+          "label": "Gaming",
+          "icon": "gamepad-2",
+          "image": null,
+          "color": "#ff3232",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#ffffff",
+          "colSpan": 2,
+          "rowSpan": 2,
+          "actionType": "obs",
+          "actionData": {
+            "command": "SetCurrentProgramScene",
+            "params": {
+              "sceneName": "GAME"
+            }
+          }
+        },
+        "0-2": {
+          "label": "BRB",
+          "icon": "coffee",
+          "color": "#3b82f6",
+          "actionType": "obs",
+          "actionData": {
+            "command": "SetCurrentProgramScene",
+            "params": {
+              "sceneName": "BRB"
+            }
+          },
+          "colSpan": 1,
+          "rowSpan": 1
+        },
+        "0-3": {
+          "label": "Screen",
+          "icon": "tv",
+          "image": null,
+          "color": "#327dd7",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#ffffff",
+          "colSpan": 3,
+          "rowSpan": 2
+        },
+        "0-9": {
+          "label": "Music",
+          "icon": "arrow-right",
+          "image": null,
+          "color": "#1db954",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#ffffff",
+          "colSpan": 1,
+          "rowSpan": 1,
+          "actionType": "nav",
+          "actionData": {
+            "targetProfile": "media_apps"
+          }
+        },
+        "0-6": {
+          "label": "Camera Off",
+          "icon": "video-off",
+          "image": null,
+          "color": "#ff3232",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#ff3232",
+          "colSpan": 1,
+          "rowSpan": 1,
+          "actionType": "obs",
+          "actionData": {
+            "command": "ToggleSourceVisibility",
+            "params": {
+              "sceneName": "",
+              "sourceName": "Camera"
+            }
+          }
+        },
+        "1-7": {
+          "label": "Streamer",
+          "icon": "user",
+          "image": null,
+          "color": "#ff7d00",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#ffffff",
+          "colSpan": 2,
+          "rowSpan": 3
+        },
+        "1-9": {
+          "label": "Vol +",
+          "icon": "volume-2",
+          "image": null,
+          "color": "#969696",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#ff0000",
+          "colSpan": 1,
+          "rowSpan": 2,
+          "actionType": "system",
+          "actionData": {
+            "command": "powershell -c \"(New-Object -ComObject WScript.Shell).SendKeys([char]175)\""
+          }
+        },
+        "2-1": {
+          "label": "BRB",
+          "icon": "pause",
+          "image": null,
+          "color": "#ff3232",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#ff3232",
+          "colSpan": 1,
+          "rowSpan": 1,
+          "actionType": "obs",
+          "actionData": {
+            "command": "SetCurrentProgramScene",
+            "params": {
+              "sceneName": "BRB"
+            }
+          }
+        },
+        "2-2": {
+          "label": "React / Chat",
+          "icon": "video",
+          "image": null,
+          "color": "#327dd7",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#ffffff",
+          "colSpan": 1,
+          "rowSpan": 1,
+          "actionType": "obs",
+          "actionData": {
+            "command": "SetCurrentProgramScene",
+            "params": {
+              "sceneName": "CHAT"
+            }
+          }
+        },
+        "2-3": {
+          "label": "OBS",
+          "icon": "obs",
+          "image": null,
+          "color": "#000000",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#ffffff",
+          "colSpan": 1,
+          "rowSpan": 1,
+          "actionType": "system",
+          "actionData": {
+            "command": "start \"\" /d \"C:\\Program Files\\obs-studio\\bin\\64bit\" \"obs64.exe\""
+          }
+        },
+        "2-4": {
+          "label": "Twitch",
+          "icon": "twitch",
+          "image": null,
+          "color": "#9146ff",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#ffffff",
+          "colSpan": 2,
+          "rowSpan": 1,
+          "actionType": "system",
+          "actionData": {
+            "command": "start https://www.twitch.tv/your_twitch_channel"
+          }
+        },
+        "2-6": {
+          "label": "Social Media",
+          "icon": "bar-chart-2",
+          "image": null,
+          "color": "#ff7d00",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#ffffff",
+          "colSpan": 1,
+          "rowSpan": 2,
+          "actionType": "twitch_chat",
+          "actionData": {
+            "message": "Join our community and check out my socials!\n\nInstagram: instagram.com/your_instagram\nTikTok: @your_tiktok\nTwitter/X: @your_twitter\nYouTube: youtube.com/@your_youtube",
+            "interval": 900
+          }
+        },
+        "1-6": {
+          "label": "Discord",
+          "icon": "discord",
+          "image": null,
+          "color": "#327dd7",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#ffffff",
+          "colSpan": 1,
+          "rowSpan": 1,
+          "actionType": "twitch_chat",
+          "actionData": {
+            "message": "Join our Discord server to connect with the community!\n\nDiscord:\nhttps://discord.gg/your_discord_invite",
+            "interval": 900
+          }
+        },
+        "3-0": {
+          "label": "Record",
+          "icon": "circle",
+          "image": null,
+          "color": "#ffffff",
+          "iconColor": "#ff3232",
+          "textColor": "#000000",
+          "glowColor": "#ff3232",
+          "colSpan": 1,
+          "rowSpan": 1,
+          "actionType": "obs",
+          "actionData": {
+            "command": "ToggleRecord",
+            "params": {}
+          }
+        },
+        "3-1": {
+          "label": "Microphone",
+          "icon": "mic",
+          "image": null,
+          "color": "#ff7d00",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#ffffff",
+          "colSpan": 1,
+          "rowSpan": 1,
+          "actionType": "obs",
+          "actionData": {
+            "command": "ToggleInputMute",
+            "params": {
+              "inputName": "Mic/Aux"
+            }
+          }
+        },
+        "3-2": {
+          "label": "Desktop Audio",
+          "icon": "volume-2",
+          "image": null,
+          "color": "#ff7d00",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#ffffff",
+          "colSpan": 1,
+          "rowSpan": 1,
+          "actionType": "obs",
+          "actionData": {
+            "command": "ToggleInputMute",
+            "params": {
+              "inputName": "Desktop Audio"
+            }
+          }
+        },
+        "3-9": {
+          "label": "Vol -",
+          "icon": "volume-1",
+          "image": null,
+          "color": "#969696",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#ff0000",
+          "colSpan": 1,
+          "rowSpan": 1,
+          "actionType": "system",
+          "actionData": {
+            "command": "powershell -c \"(New-Object -ComObject WScript.Shell).SendKeys([char]174)\""
+          }
+        }
+      },
+      "favorites": [
+        {
+          "label": "Start",
+          "icon": "play",
+          "image": null,
+          "color": "#1db954",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#ffffff",
+          "colSpan": 1,
+          "rowSpan": 1,
+          "actionType": "obs",
+          "actionData": {
+            "command": "SetCurrentProgramScene",
+            "params": {
+              "sceneName": "START"
+            }
+          }
+        },
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    "media_apps": {
+      "id": "media_apps",
+      "name": "Music",
+      "rows": 3,
+      "cols": 5,
+      "buttons": {
+        "0-0": {
+          "label": "Spotify",
+          "icon": "spotify",
+          "image": null,
+          "color": "#1db954",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#1db954",
+          "colSpan": 2,
+          "rowSpan": 2,
+          "actionType": "system",
+          "actionData": {
+            "command": "start spotify:"
+          }
+        },
+        "0-1": {
+          "label": "Discord",
+          "icon": "message-square",
+          "color": "#5865f2",
+          "actionType": "system",
+          "actionData": {
+            "command": "start discord:"
+          }
+        },
+        "0-2": {
+          "label": "Internet",
+          "icon": "external-link",
+          "image": null,
+          "color": "#9146ff",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#327dd7",
+          "colSpan": 1,
+          "rowSpan": 1,
+          "actionType": "system",
+          "actionData": {
+            "command": "start chrome"
+          }
+        },
+        "0-3": {
+          "label": "Vol +",
+          "icon": "volume-2",
+          "image": null,
+          "color": "#969696",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#969696",
+          "colSpan": 1,
+          "rowSpan": 2,
+          "actionType": "system",
+          "actionData": {
+            "command": "powershell -c \"(New-Object -ComObject WScript.Shell).SendKeys([char]175)\""
+          }
+        },
+        "0-4": {
+          "label": "Back",
+          "icon": "arrow-left",
+          "image": null,
+          "color": "#ff3232",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#327dd7",
+          "colSpan": 1,
+          "rowSpan": 3,
+          "actionType": "nav",
+          "actionData": {
+            "targetProfile": "obs_control"
+          }
+        },
+        "1-2": {
+          "label": "Calculator",
+          "icon": "calculator",
+          "image": null,
+          "color": "#327dd7",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#327dd7",
+          "colSpan": 1,
+          "rowSpan": 1,
+          "actionType": "system",
+          "actionData": {
+            "command": "calc"
+          }
+        },
+        "2-0": {
+          "label": "Prev",
+          "icon": "skip-back",
+          "image": null,
+          "color": "#969696",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#969696",
+          "colSpan": 1,
+          "rowSpan": 1,
+          "actionType": "system",
+          "actionData": {
+            "command": "powershell -c \"(New-Object -ComObject WScript.Shell).SendKeys([char]177)\""
+          }
+        },
+        "2-1": {
+          "label": "Play / Pause",
+          "icon": "play",
+          "image": null,
+          "color": "#1db954",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#1db954",
+          "colSpan": 1,
+          "rowSpan": 1,
+          "actionType": "system",
+          "actionData": {
+            "command": "powershell -c \"(New-Object -ComObject WScript.Shell).SendKeys([char]179)\""
+          }
+        },
+        "2-2": {
+          "label": "Next",
+          "icon": "skip-forward",
+          "image": null,
+          "color": "#969696",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#969696",
+          "colSpan": 1,
+          "rowSpan": 1,
+          "actionType": "system",
+          "actionData": {
+            "command": "powershell -c \"(New-Object -ComObject WScript.Shell).SendKeys([char]176)\""
+          }
+        },
+        "2-3": {
+          "label": "Vol -",
+          "icon": "volume-1",
+          "image": null,
+          "color": "#969696",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#969696",
+          "colSpan": 1,
+          "rowSpan": 1,
+          "actionType": "system",
+          "actionData": {
+            "command": "powershell -c \"(New-Object -ComObject WScript.Shell).SendKeys([char]174)\""
+          }
+        }
+      },
+      "favorites": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    }
+  }
+}

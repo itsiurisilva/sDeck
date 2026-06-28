@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
 import http from 'http';
@@ -9,6 +10,7 @@ import { exec } from 'child_process';
 import os from 'os';
 import { OBSWebSocket } from 'obs-websocket-js';
 import multer from 'multer';
+import { io } from 'socket.io-client';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,7 +20,29 @@ const CONFIG_DIR = path.join(__dirname, 'config');
 const SETTINGS_PATH = path.join(CONFIG_DIR, 'settings.json');
 const PROFILES_PATH = path.join(CONFIG_DIR, 'profiles.json');
 const STATE_PATH = path.join(CONFIG_DIR, 'state.json');
+const SOUNDS_META_PATH = path.join(CONFIG_DIR, 'sounds-meta.json');
 const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
+
+const DEFAULT_SYNTHS = [
+  { id: 'airhorn', name: 'Airhorn', icon: 'wind', isSynth: true },
+  { id: 'siren', name: 'Siren', icon: 'megaphone', isSynth: true },
+  { id: 'coin', name: 'Coin', icon: 'coins', isSynth: true },
+  { id: 'laser', name: 'Laser', icon: 'zap', isSynth: true },
+  { id: 'boom', name: 'Boom', icon: 'bomb', isSynth: true },
+  { id: 'success', name: 'Success', icon: 'check-circle', isSynth: true },
+  { id: 'drumroll', name: 'Drum Roll', icon: 'music-4', isSynth: true },
+  { id: 'rimshot', name: 'Ba Dum Tss', icon: 'drum', isSynth: true },
+  { id: 'notification', name: 'Notification', icon: 'bell', isSynth: true },
+  { id: 'level_up', name: 'Level Up', icon: 'trending-up', isSynth: true },
+  { id: 'sad_trombone', name: 'Sad Trombone', icon: 'frown', isSynth: true },
+  { id: 'fanfare', name: 'Fanfare', icon: 'trophy', isSynth: true },
+  { id: 'error', name: 'Error', icon: 'x-circle', isSynth: true },
+  { id: 'chime', name: 'Chime', icon: 'sparkles', isSynth: true },
+  { id: 'heartbeat', name: 'Heartbeat', icon: 'heart', isSynth: true },
+  { id: 'powerup', name: 'Power Up', icon: 'zap', isSynth: true },
+  { id: 'sub_alert', name: 'Sub Alert', icon: 'star', isSynth: true },
+  { id: 'glitch', name: 'Glitch', icon: 'shuffle', isSynth: true }
+];
 
 // Ensure directories exist
 try {
@@ -34,9 +58,17 @@ async function loadJson(filePath, defaults) {
     const data = await fs.readFile(filePath, 'utf8');
     return JSON.parse(data);
   } catch (err) {
-    console.log(`[Config] Creating default for ${path.basename(filePath)}`);
-    await saveJson(filePath, defaults);
-    return defaults;
+    const examplePath = filePath + '.example';
+    try {
+      const exampleData = await fs.readFile(examplePath, 'utf8');
+      console.log(`[Config] Copying template from ${path.basename(examplePath)} to ${path.basename(filePath)}`);
+      await fs.writeFile(filePath, exampleData, 'utf8');
+      return JSON.parse(exampleData);
+    } catch (tplErr) {
+      console.log(`[Config] Creating default for ${path.basename(filePath)}`);
+      await saveJson(filePath, defaults);
+      return defaults;
+    }
   }
 }
 
@@ -52,6 +84,7 @@ async function saveJson(filePath, data) {
 
 // Default Configuration Templates
 const defaultSettings = {
+  firstSetupCompleted: false,
   obs: {
     host: "localhost",
     port: "4455",
@@ -71,7 +104,8 @@ const defaultSettings = {
     port: 3000
   },
   twitch: {
-    username: "SAMUCA2835"
+    username: "",
+    chatToken: ""
   }
 };
 
@@ -106,6 +140,21 @@ let settingsConfig = await loadJson(SETTINGS_PATH, defaultSettings);
 let profilesConfig = await loadJson(PROFILES_PATH, defaultProfiles);
 let stateConfig = await loadJson(STATE_PATH, defaultState);
 
+function getTwitchData() {
+  return {
+    viewerCount: stateConfig.viewer_count,
+    isLive: stateConfig.is_live,
+    latestFollower: stateConfig.latest_follower,
+    latestSub: stateConfig.latest_sub,
+    latestDonation: stateConfig.latest_donation,
+    twitchUsername: settingsConfig.twitch?.username || process.env.TWITCH_USERNAME || "Streamer",
+    twitterHandle: process.env.TWITTER_HANDLE || "",
+    instagramHandle: process.env.INSTAGRAM_HANDLE || "",
+    tiktokHandle: process.env.TIKTOK_HANDLE || "",
+    youtubeHandle: process.env.YOUTUBE_HANDLE || ""
+  };
+}
+
 // Express and Server setup
 const app = express();
 const server = http.createServer(app);
@@ -125,8 +174,10 @@ let currentSpotifyState = {
   isPlaying: false
 };
 
-let streamlabsWs = null;
+let streamlabsSocket = null;
 let spotifyInterval = null;
+let twitchIrcWs = null;
+let twitchChatConnected = false;
 
 // Multer Storage Configuration
 const storage = multer.diskStorage({
@@ -279,6 +330,61 @@ function startSpotifyPoll() {
 }
 
 // -------------------------------------------------------------
+// TWITCH IRC (CHAT)
+// -------------------------------------------------------------
+function connectTwitchIrc() {
+  const token = settingsConfig.twitch?.chatToken;
+  const username = settingsConfig.twitch?.username;
+  if (!token || !username) return;
+
+  if (twitchIrcWs) {
+    try { twitchIrcWs.terminate(); } catch(e) {}
+    twitchIrcWs = null;
+  }
+
+  const ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+  twitchIrcWs = ws;
+
+  ws.on('open', () => {
+    ws.send(`PASS oauth:${token.replace(/^oauth:/i, '')}`);
+    ws.send(`NICK ${username.toLowerCase()}`);
+    ws.send(`JOIN #${username.toLowerCase()}`);
+    twitchChatConnected = true;
+    broadcast({ type: 'twitch_irc_status', connected: true });
+    console.log('[TwitchIRC] Connected to', username);
+  });
+
+  ws.on('message', (data) => {
+    const msg = data.toString();
+    if (msg.startsWith('PING')) ws.send('PONG :tmi.twitch.tv');
+    if (msg.includes('NOTICE') && msg.includes('Login authentication failed')) {
+      console.error('[TwitchIRC] Auth failed — check OAuth token');
+      twitchChatConnected = false;
+      broadcast({ type: 'twitch_irc_status', connected: false, error: 'Invalid token' });
+    }
+  });
+
+  ws.on('close', () => {
+    twitchChatConnected = false;
+    twitchIrcWs = null;
+    broadcast({ type: 'twitch_irc_status', connected: false });
+    setTimeout(connectTwitchIrc, 15000);
+  });
+
+  ws.on('error', (err) => {
+    console.error('[TwitchIRC] Error:', err.message);
+    try { ws.close(); } catch(e) {}
+  });
+}
+
+function sendTwitchChatMessage(message) {
+  const username = settingsConfig.twitch?.username;
+  if (!twitchChatConnected || !twitchIrcWs || !username) return false;
+  twitchIrcWs.send(`PRIVMSG #${username.toLowerCase()} :${message}`);
+  return true;
+}
+
+// -------------------------------------------------------------
 // STREAMLABS SOCKET
 // -------------------------------------------------------------
 async function connectStreamlabs() {
@@ -288,52 +394,42 @@ async function connectStreamlabs() {
     return;
   }
 
-  if (streamlabsWs) {
-    streamlabsWs.terminate();
+  if (streamlabsSocket) {
+    streamlabsSocket.disconnect();
   }
 
-  const wsUrl = `wss://sockets.streamlabs.com/socket.io/?token=${token}&EIO=3&transport=websocket`;
-  console.log('[Streamlabs] Connecting to Streamlabs WebSocket...');
+  console.log('[Streamlabs] Connecting to Streamlabs Socket.IO...');
   
-  const ws = new WebSocket(wsUrl);
-  streamlabsWs = ws;
+  streamlabsSocket = io(`https://sockets.streamlabs.com?token=${token}`, {
+    transports: ['websocket'],
+    autoConnect: true,
+    reconnection: true,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    reconnectionAttempts: Infinity
+  });
 
-  ws.on('open', () => {
+  streamlabsSocket.on('connect', () => {
     console.log('[Streamlabs] Connected successfully to Streamlabs!');
+    broadcast({ type: 'streamlabs_status', connected: true });
   });
 
-  ws.on('message', async (rawData) => {
-    const message = rawData.toString();
-    
-    // Ping/Pong
-    if (message === '2') {
-      ws.send('3');
-      return;
+  streamlabsSocket.on('disconnect', (reason) => {
+    console.warn(`[Streamlabs] Connection closed: ${reason}. Reconnecting...`);
+    broadcast({ type: 'streamlabs_status', connected: false });
+  });
+
+  streamlabsSocket.on('connect_error', (error) => {
+    console.error('[Streamlabs] Connection error:', error.message);
+    broadcast({ type: 'streamlabs_status', connected: false, error: error.message });
+  });
+
+  streamlabsSocket.on('event', async (eventData) => {
+    try {
+      await handleStreamlabsEvent(eventData);
+    } catch (err) {
+      console.error('[Streamlabs] Error handling event:', err);
     }
-
-    if (message.startsWith('42')) {
-      try {
-        const payload = JSON.parse(message.substring(2));
-        const eventName = payload[0];
-        const eventData = payload[1];
-
-        if (eventName === 'event') {
-          await handleStreamlabsEvent(eventData);
-        }
-      } catch (err) {
-        console.error('[Streamlabs] Error parsing event packet:', err);
-      }
-    }
-  });
-
-  ws.on('close', (code, reason) => {
-    console.warn(`[Streamlabs] Connection closed: ${code} - ${reason}. Reconnecting in 10s...`);
-    setTimeout(connectStreamlabs, 10000);
-  });
-
-  ws.on('error', (err) => {
-    console.error('[Streamlabs] WebSocket error:', err.message);
-    ws.close();
   });
 }
 
@@ -353,13 +449,7 @@ async function handleStreamlabsEvent(eventData) {
     await saveJson(STATE_PATH, stateConfig);
     broadcast({
       type: 'twitch',
-      data: {
-        viewerCount: stateConfig.viewer_count,
-        isLive: stateConfig.is_live,
-        latestFollower: name,
-        latestSub: stateConfig.latest_sub,
-        latestDonation: stateConfig.latest_donation
-      }
+      data: getTwitchData()
     });
     broadcast({
       type: 'alert',
@@ -376,13 +466,7 @@ async function handleStreamlabsEvent(eventData) {
     const tier = mainMsg.sub_plan === '3000' ? 'TIER 3' : (mainMsg.sub_plan === '2000' ? 'TIER 2' : 'TIER 1');
     broadcast({
       type: 'twitch',
-      data: {
-        viewerCount: stateConfig.viewer_count,
-        isLive: stateConfig.is_live,
-        latestFollower: stateConfig.latest_follower,
-        latestSub: name,
-        latestDonation: stateConfig.latest_donation
-      }
+      data: getTwitchData()
     });
     broadcast({
       type: 'alert',
@@ -404,13 +488,7 @@ async function handleStreamlabsEvent(eventData) {
     
     broadcast({
       type: 'twitch',
-      data: {
-        viewerCount: stateConfig.viewer_count,
-        isLive: stateConfig.is_live,
-        latestFollower: stateConfig.latest_follower,
-        latestSub: stateConfig.latest_sub,
-        latestDonation: stateConfig.latest_donation
-      }
+      data: getTwitchData()
     });
     broadcast({
       type: 'alert',
@@ -658,19 +736,58 @@ async function handleAction(type, actionData, ws) {
     }
     try {
       if (actionData.command === 'ToggleSourceVisibility') {
-        const { sceneName, sourceName } = actionData.params;
-        const response = await obs.call('GetSceneItemList', { sceneName });
-        const item = response.sceneItems.find(i => i.sourceName === sourceName);
-        if (!item) {
-          throw new Error(`Fonte '${sourceName}' não encontrada na cena '${sceneName}'`);
+        let { sceneName, sourceName } = actionData.params;
+        let targetScene = sceneName?.trim();
+        let item = null;
+
+        if (!targetScene) {
+          // 1. Try current active scene first
+          if (obsCurrentScene) {
+            try {
+              const response = await obs.call('GetSceneItemList', { sceneName: obsCurrentScene });
+              item = response.sceneItems.find(i => i.sourceName === sourceName);
+              if (item) {
+                targetScene = obsCurrentScene;
+              }
+            } catch (err) {
+              console.warn(`Failed to search in current scene: ${err.message}`);
+            }
+          }
+
+          // 2. If not found in current scene, search all scenes
+          if (!item && obsScenes && obsScenes.length > 0) {
+            for (const scene of obsScenes) {
+              try {
+                const response = await obs.call('GetSceneItemList', { sceneName: scene });
+                const foundItem = response.sceneItems.find(i => i.sourceName === sourceName);
+                if (foundItem) {
+                  item = foundItem;
+                  targetScene = scene;
+                  break;
+                }
+              } catch (err) {
+                // ignore and check next scene
+              }
+            }
+          }
+        } else {
+          // User specified a scene
+          const response = await obs.call('GetSceneItemList', { sceneName: targetScene });
+          item = response.sceneItems.find(i => i.sourceName === sourceName);
         }
+
+        if (!targetScene || !item) {
+          throw new Error(`Source '${sourceName}' not found in ${sceneName ? `scene '${sceneName}'` : 'any scene'}`);
+        }
+
         await obs.call('SetSceneItemEnabled', {
-          sceneName,
+          sceneName: targetScene,
           sceneItemId: item.sceneItemId,
           sceneItemEnabled: !item.sceneItemEnabled
         });
       } else {
-        await obs.call(actionData.command, actionData.params || {});
+        const cmd = actionData.command === 'Custom' ? actionData.customRequest : actionData.command;
+        await obs.call(cmd, actionData.params || {});
       }
     } catch (err) {
       console.error(`OBS command error (${actionData.command}):`, err.message);
@@ -723,7 +840,10 @@ wss.on('connection', async (ws) => {
     obsRecordState,
     obsScenes,
     obsInputs,
-    obsActiveSceneItems
+    obsActiveSceneItems,
+    twitchChatConnected,
+    streamlabsConnected: !!streamlabsSocket?.connected,
+    spotifyUser: spotifyUserProfile
   }));
 
   // 2. Send Spotify current playback state (for overlays/dashboard)
@@ -732,13 +852,7 @@ wss.on('connection', async (ws) => {
   // 3. Send live stats state (for overlays/dashboard)
   ws.send(JSON.stringify({
     type: 'twitch',
-    data: {
-      viewerCount: stateConfig.viewer_count,
-      isLive: stateConfig.is_live,
-      latestFollower: stateConfig.latest_follower,
-      latestSub: stateConfig.latest_sub,
-      latestDonation: stateConfig.latest_donation
-    }
+    data: getTwitchData()
   }));
 
   ws.on('message', async (message) => {
@@ -765,18 +879,15 @@ wss.on('connection', async (ws) => {
           obsRecordState,
           obsScenes,
           obsInputs,
-          obsActiveSceneItems
+          obsActiveSceneItems,
+          twitchChatConnected,
+          streamlabsConnected: !!streamlabsSocket?.connected,
+          spotifyUser: spotifyUserProfile
         }));
         ws.send(JSON.stringify({ type: 'spotify', data: currentSpotifyState }));
         ws.send(JSON.stringify({
           type: 'twitch',
-          data: {
-            viewerCount: stateConfig.viewer_count,
-            isLive: stateConfig.is_live,
-            latestFollower: stateConfig.latest_follower,
-            latestSub: stateConfig.latest_sub,
-            latestDonation: stateConfig.latest_donation
-          }
+          data: getTwitchData()
         }));
         break;
 
@@ -803,10 +914,10 @@ wss.on('connection', async (ws) => {
       case 'save_settings':
         settingsConfig = data.settings;
         if (await saveJson(SETTINGS_PATH, settingsConfig)) {
-          broadcast({ type: 'settings_updated', settings: settingsConfig });
-          // Reconnect OBS and Streamlabs
+          broadcast({ type: 'settings_updated', settings: settingsConfig, spotifyUser: spotifyUserProfile });
           connectToObs();
           connectStreamlabs();
+          connectTwitchIrc();
         } else {
           ws.send(JSON.stringify({ type: 'error', message: 'Failed to save settings config' }));
         }
@@ -824,6 +935,12 @@ wss.on('connection', async (ws) => {
         }
         break;
 
+      case 'send_chat_message':
+        if (!twitchIrcWs) {
+          ws.send(JSON.stringify({ type: 'error', message: 'Twitch Chat not connected! Configure the OAuth Token in Config > Stream & Alerts.' }));
+          return;
+        }break;
+
       default:
         console.log('[WebSocket] Unhandled message:', data.type);
     }
@@ -840,7 +957,8 @@ wss.on('connection', async (ws) => {
 app.get('/api/status', async (req, res) => {
   res.json({
     spotifyConnected: !!settingsConfig.spotify.refresh_token,
-    streamlabsConnected: streamlabsWs && streamlabsWs.readyState === WebSocket.OPEN,
+    spotifyUser: spotifyUserProfile,
+    streamlabsConnected: !!streamlabsSocket?.connected,
     latestFollower: stateConfig.latest_follower,
     latestSub: stateConfig.latest_sub,
     latestDonation: stateConfig.latest_donation,
@@ -849,15 +967,132 @@ app.get('/api/status', async (req, res) => {
     spotifySettingsSet: !!settingsConfig.spotify.client_id,
     streamlabsSettingsSet: !!settingsConfig.streamlabs.token,
     twitchUsername: settingsConfig.twitch ? settingsConfig.twitch.username : "SAMUCA2835",
+    twitchConnected: twitchChatConnected,
     obsConnected
   });
 });
 
+// New endpoints for disconnection and connection tests
+app.post('/api/spotify/disconnect', async (req, res) => {
+  try {
+    settingsConfig.spotify.client_id = "";
+    settingsConfig.spotify.client_secret = "";
+    settingsConfig.spotify.access_token = "";
+    settingsConfig.spotify.refresh_token = "";
+    await saveJson(SETTINGS_PATH, settingsConfig);
+    spotifyUserProfile = null;
+    currentSpotifyState = {
+      title: 'Nenhuma música tocando',
+      artist: 'Spotify',
+      progressStr: '0:00',
+      durationStr: '0:00',
+      progressPercent: 0,
+      albumArt: '',
+      isPlaying: false
+    };
+    broadcast({ type: 'spotify', data: currentSpotifyState });
+    broadcast({ type: 'settings_updated', settings: settingsConfig, spotifyUser: spotifyUserProfile });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/twitch/disconnect', async (req, res) => {
+  try {
+    if (!settingsConfig.twitch) settingsConfig.twitch = {};
+    settingsConfig.twitch.username = "";
+    settingsConfig.twitch.chatToken = "";
+    await saveJson(SETTINGS_PATH, settingsConfig);
+    
+    if (twitchIrcWs) {
+      try { twitchIrcWs.terminate(); } catch (e) {}
+      twitchIrcWs = null;
+    }
+    twitchChatConnected = false;
+    broadcast({ type: 'twitch_irc_status', connected: false });
+    broadcast({ type: 'settings_updated', settings: settingsConfig, spotifyUser: spotifyUserProfile });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/streamlabs/test', async (req, res) => {
+  const { token } = req.body;
+  if (!token) {
+    return res.status(400).json({ error: 'Token is required.' });
+  }
+  
+  console.log('[Streamlabs] Testing token...');
+  
+  let resolved = false;
+  let tempSocket = null;
+  
+  const timeout = setTimeout(() => {
+    if (!resolved) {
+      resolved = true;
+      try { tempSocket.disconnect(); } catch (err) {}
+      res.json({ success: false, error: 'Request timeout. Verify if the token is valid.' });
+    }
+  }, 6000);
+  
+  try {
+    tempSocket = io(`https://sockets.streamlabs.com?token=${token}`, {
+      transports: ['websocket'],
+      autoConnect: true,
+      reconnection: false
+    });
+
+    tempSocket.on('connect', () => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        try { tempSocket.disconnect(); } catch (err) {}
+        res.json({ success: true });
+      }
+    });
+
+    tempSocket.on('connect_error', (err) => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        try { tempSocket.disconnect(); } catch (e) {}
+        res.json({ success: false, error: err.message || 'Failed to connect to Streamlabs server.' });
+      }
+    });
+  } catch (e) {
+    if (!resolved) {
+      resolved = true;
+      clearTimeout(timeout);
+      res.json({ success: false, error: e.message });
+    }
+  }
+});
+
 app.post('/api/settings', async (req, res) => {
-  const { spotify_client_id, spotify_client_secret, streamlabs_token, viewer_count, is_live, twitch_username } = req.body;
+  const { 
+    spotify_client_id, 
+    spotify_client_secret, 
+    streamlabs_token, 
+    viewer_count, 
+    is_live, 
+    twitch_username,
+    twitch_token,
+    obs_host,
+    obs_port,
+    obs_password,
+    firstSetupCompleted
+  } = req.body;
   
   let reloadSpotify = false;
   let reloadStreamlabs = false;
+  let reloadTwitch = false;
+  let reloadObs = false;
+
+  if (firstSetupCompleted !== undefined) {
+    settingsConfig.firstSetupCompleted = !!firstSetupCompleted;
+  }
 
   if (spotify_client_id !== undefined && spotify_client_id !== settingsConfig.spotify.client_id) {
     settingsConfig.spotify.client_id = spotify_client_id;
@@ -880,6 +1115,24 @@ app.post('/api/settings', async (req, res) => {
   if (twitch_username !== undefined) {
     if (!settingsConfig.twitch) settingsConfig.twitch = {};
     settingsConfig.twitch.username = twitch_username.trim();
+    reloadTwitch = true;
+  }
+  if (twitch_token !== undefined) {
+    if (!settingsConfig.twitch) settingsConfig.twitch = {};
+    settingsConfig.twitch.chatToken = twitch_token.trim();
+    reloadTwitch = true;
+  }
+  if (obs_host !== undefined) {
+    settingsConfig.obs.host = obs_host.trim();
+    reloadObs = true;
+  }
+  if (obs_port !== undefined) {
+    settingsConfig.obs.port = obs_port.trim();
+    reloadObs = true;
+  }
+  if (obs_password !== undefined) {
+    settingsConfig.obs.password = obs_password;
+    reloadObs = true;
   }
 
   await saveJson(SETTINGS_PATH, settingsConfig);
@@ -888,14 +1141,11 @@ app.post('/api/settings', async (req, res) => {
   // Sync twitch state immediately
   broadcast({
     type: 'twitch',
-    data: {
-      viewerCount: stateConfig.viewer_count,
-      isLive: stateConfig.is_live,
-      latestFollower: stateConfig.latest_follower,
-      latestSub: stateConfig.latest_sub,
-      latestDonation: stateConfig.latest_donation
-    }
+    data: getTwitchData()
   });
+
+  // Broadcast settings update to all active frontend clients
+  broadcast({ type: 'settings_updated', settings: settingsConfig, spotifyUser: spotifyUserProfile });
 
   if (reloadSpotify) {
     settingsConfig.spotify.refresh_token = "";
@@ -904,6 +1154,12 @@ app.post('/api/settings', async (req, res) => {
   }
   if (reloadStreamlabs) {
     connectStreamlabs();
+  }
+  if (reloadTwitch) {
+    connectTwitchIrc();
+  }
+  if (reloadObs) {
+    connectToObs();
   }
 
   res.json({ success: true, reloadSpotify });
@@ -940,6 +1196,30 @@ async function spotifyApiCall(endpoint, method, body = null) {
   return response;
 }
 
+let spotifyUserProfile = null;
+async function fetchSpotifyProfile() {
+  if (!settingsConfig.spotify.refresh_token || !settingsConfig.spotify.client_id || !settingsConfig.spotify.client_secret) {
+    spotifyUserProfile = null;
+    return null;
+  }
+  try {
+    const response = await spotifyApiCall('me', 'GET');
+    if (response.ok) {
+      spotifyUserProfile = await response.json();
+      console.log(`[Spotify] Connected to account: ${spotifyUserProfile.display_name}`);
+      return spotifyUserProfile;
+    } else {
+      console.error('[Spotify] Failed to fetch profile, status:', response.status);
+      spotifyUserProfile = null;
+      return null;
+    }
+  } catch (err) {
+    console.error('[Spotify] Profile fetch error:', err.message);
+    spotifyUserProfile = null;
+    return null;
+  }
+}
+
 // Spotify Playback Control API
 app.post('/api/spotify/control', async (req, res) => {
   const { action, value } = req.body;
@@ -973,7 +1253,7 @@ app.post('/api/spotify/control', async (req, res) => {
         method = 'PUT';
         break;
       default:
-        return res.status(400).json({ error: 'Ação inválida' });
+        return res.status(400).json({ error: 'Invalid action' });
     }
 
     const response = await spotifyApiCall(endpoint, method);
@@ -994,19 +1274,39 @@ app.post('/api/spotify/control', async (req, res) => {
 // Soundboard API: List sounds
 app.get('/api/soundboard/sounds', async (req, res) => {
   try {
-    const files = await fs.readdir(UPLOADS_DIR);
+    const meta = await loadJson(SOUNDS_META_PATH, {});
     const audioFiles = [];
+    
+    // 1. Add non-hidden synths
+    DEFAULT_SYNTHS.forEach(s => {
+      const soundMeta = meta[s.id] || {};
+      if (soundMeta.hidden) return;
+      audioFiles.push({
+        id: s.id,
+        name: soundMeta.displayName || s.name,
+        icon: s.icon,
+        isSynth: true
+      });
+    });
+
+    // 2. Add uploaded custom sounds
+    let files = [];
+    try {
+      files = await fs.readdir(UPLOADS_DIR);
+    } catch (err) {}
+
     for (const f of files) {
       const lower = f.toLowerCase();
       if (lower.endsWith('.mp3') || lower.endsWith('.wav') || lower.endsWith('.ogg') || lower.endsWith('.m4a')) {
         const stats = await fs.stat(path.join(UPLOADS_DIR, f));
-        // Clean name (remove date stamp and replace underscores)
         const cleanName = f.replace(/_[0-9]+\.[a-z0-9]+$/i, '').replace(/_/g, ' ');
+        const defaultName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
         audioFiles.push({
           id: f,
-          name: cleanName.charAt(0).toUpperCase() + cleanName.slice(1),
+          name: meta[f]?.displayName || defaultName,
           file: `/uploads/${f}`,
-          size: stats.size
+          size: stats.size,
+          isSynth: false
         });
       }
     }
@@ -1019,7 +1319,7 @@ app.get('/api/soundboard/sounds', async (req, res) => {
 // Soundboard API: Upload sound
 app.post('/api/soundboard/upload', upload.single('sound'), async (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+    return res.status(400).json({ error: 'No file uploaded' });
   }
   const cleanName = req.file.filename.replace(/_[0-9]+\.[a-z0-9]+$/i, '').replace(/_/g, ' ');
   res.json({
@@ -1032,10 +1332,51 @@ app.post('/api/soundboard/upload', upload.single('sound'), async (req, res) => {
   });
 });
 
+// Soundboard API: Delete sound
+app.delete('/api/soundboard/sounds/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const filePath = path.join(UPLOADS_DIR, id);
+    
+    try {
+      await fs.unlink(filePath);
+    } catch (e) {
+      if (e.code !== 'ENOENT') throw e;
+    }
+
+    const meta = await loadJson(SOUNDS_META_PATH, {});
+    const synthIds = DEFAULT_SYNTHS.map(s => s.id);
+    if (synthIds.includes(id)) {
+      meta[id] = { ...(meta[id] || {}), hidden: true };
+    } else {
+      delete meta[id];
+    }
+    await saveJson(SOUNDS_META_PATH, meta);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Soundboard API: Rename sound
+app.patch('/api/soundboard/sounds/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { displayName } = req.body;
+    if (!displayName) return res.status(400).json({ error: 'displayName required' });
+    const meta = await loadJson(SOUNDS_META_PATH, {});
+    meta[id] = { ...(meta[id] || {}), displayName };
+    await saveJson(SOUNDS_META_PATH, meta);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Button Image Upload
 app.post('/api/button-image/upload', upload.single('image'), async (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ success: false, error: 'Nenhuma imagem enviada' });
+    return res.status(400).json({ success: false, error: 'No image uploaded' });
   }
   res.json({ success: true, url: `/uploads/${req.file.filename}` });
 });
@@ -1043,11 +1384,10 @@ app.post('/api/button-image/upload', upload.single('image'), async (req, res) =>
 // Spotify Login Redirect
 app.get('/login', async (req, res) => {
   if (!settingsConfig.spotify.client_id) {
-    return res.status(400).send('Spotify Client ID não configurado!');
+    return res.status(400).send('Spotify Client ID not configured!');
   }
-  const port = settingsConfig.server.port || 3000;
   const scopes = 'user-read-currently-playing user-read-playback-state user-modify-playback-state';
-  const redirectUri = `http://localhost:${port}/callback`;
+  const redirectUri = `${req.protocol}://${req.headers.host}/callback`;
   
   res.redirect('https://accounts.spotify.com/authorize?' + 
     new URLSearchParams({
@@ -1062,8 +1402,7 @@ app.get('/login', async (req, res) => {
 // Spotify Auth Callback
 app.get('/callback', async (req, res) => {
   const code = req.query.code || null;
-  const port = settingsConfig.server.port || 3000;
-  const redirectUri = `http://localhost:${port}/callback`;
+  const redirectUri = `${req.protocol}://${req.headers.host}/callback`;
 
   if (!code) {
     return res.status(400).send('Authorization code missing.');
@@ -1096,11 +1435,17 @@ app.get('/callback', async (req, res) => {
 
     console.log('[Spotify] Login successful and tokens saved.');
 
+    // Fetch user profile immediately
+    await fetchSpotifyProfile();
+    
+    // Broadcast update to all connected clients
+    broadcast({ type: 'settings_updated', settings: settingsConfig, spotifyUser: spotifyUserProfile });
+
     res.send(`
       <html>
         <body style="background:#0a0814;color:#f0e6d0;font-family:sans-serif;text-align:center;padding-top:100px;">
-          <h1 style="color:#E8A020;">Autenticado com Sucesso!</h1>
-          <p>O Spotify foi conectado. Pode fechar esta janela agora.</p>
+          <h1 style="color:#E8A020;">Successfully Authenticated!</h1>
+          <p>Spotify has been connected. You can close this window now.</p>
           <script>setTimeout(() => window.close(), 3000);</script>
         </body>
       </html>
@@ -1111,7 +1456,7 @@ app.get('/callback', async (req, res) => {
 
   } catch (err) {
     console.error('[Spotify] Auth callback error:', err);
-    res.status(500).send(`Erro de autenticação: ${err.message}`);
+    res.status(500).send(`Authentication error: ${err.message}`);
   }
 });
 
@@ -1126,13 +1471,7 @@ app.post('/api/test-alert', async (req, res) => {
     await saveJson(STATE_PATH, stateConfig);
     broadcast({
       type: 'twitch',
-      data: {
-        viewerCount: stateConfig.viewer_count,
-        isLive: stateConfig.is_live,
-        latestFollower: stateConfig.latest_follower,
-        latestSub: stateConfig.latest_sub,
-        latestDonation: stateConfig.latest_donation
-      }
+      data: getTwitchData()
     });
     broadcast({
       type: 'alert',
@@ -1147,13 +1486,7 @@ app.post('/api/test-alert', async (req, res) => {
     await saveJson(STATE_PATH, stateConfig);
     broadcast({
       type: 'twitch',
-      data: {
-        viewerCount: stateConfig.viewer_count,
-        isLive: stateConfig.is_live,
-        latestFollower: stateConfig.latest_follower,
-        latestSub: stateConfig.latest_sub,
-        latestDonation: stateConfig.latest_donation
-      }
+      data: getTwitchData()
     });
     broadcast({
       type: 'alert',
@@ -1209,7 +1542,9 @@ server.listen(PORT, async () => {
     connectToObs();
   }
   connectStreamlabs();
+  await fetchSpotifyProfile();
   startSpotifyPoll();
+  connectTwitchIrc();
 
   // Auto open dashboard on PC
   try {

@@ -2,6 +2,10 @@ node_modules/
 _backup_old/
 public/uploads/*
 !public/uploads/.gitkeep
+config/settings.json
+config/profiles.json
 config/state.json
+config/sounds-meta.json
 *.log
 .env
+.env.local
