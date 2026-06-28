@@ -14,7 +14,7 @@
 
   *Transform any smartphone, tablet, or web browser into a custom Stream Deck controller, while serving beautiful retro-themed, realtime HTML overlays directly to OBS Studio.*
 
-  [Features](#features) • [Quick Start](#quick-start) • [Configuration](#configuration) • [Stream Overlays](#stream-overlays) • [Troubleshooting](#troubleshooting)
+  [Features](#features) • [Screenshots](#screenshots) • [Quick Start](#quick-start) • [Configuration](#configuration) • [Stream Overlays](#stream-overlays) • [Troubleshooting](#troubleshooting)
 
 </div>
 
@@ -28,6 +28,28 @@
 *   **Streamlabs Alerts Integration**: Listen to follower, subscription, and donation events in real-time, displaying custom alerts and updating follower goals instantly.
 *   **Realtime Overlays**: Responsive HTML/JS overlays (Top Bar Info, Social Tickers, "Now Playing" widgets) that update live via WebSocket.
 *   **Security First**: Critical credentials, passwords, and tokens are stored securely in local git-ignored configurations, ensuring your stream keys never leak.
+
+---
+
+## Screenshots
+
+<details>
+<summary>📸 Click to expand dashboard screenshots</summary>
+<br/>
+
+### Stream Deck Interface
+![Stream Deck Interface](Gallery/stream_deck.png)
+
+### Chat & Quick Moderation
+![Chat & Quick Moderation](Gallery/chat_moderation.png)
+
+### Soundboard & Sound Effects
+![Soundboard & Sound Effects](Gallery/soundboard.png)
+
+### Connection & Credentials Panel
+![Connection & Credentials Panel](Gallery/configuration.png)
+
+</details>
 
 ---
 
