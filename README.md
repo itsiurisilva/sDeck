@@ -1,8 +1,5 @@
 <div align="center">
 
-  <!-- Logo -->
-  <img src="public/uploads/discord_white_icon_1782572425168.webp" alt="sDeck Logo" width="96" style="border-radius: 12px; margin-bottom: 12px;" />
-
   # sDeck
 
   ### A Sleek, Low-Latency Web-Based Stream Deck & Overlay System for OBS, Spotify, Twitch, and Streamlabs
@@ -13,6 +10,13 @@
   [![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen.svg?style=flat-square)](https://makeapullrequest.com)
 
   *Transform any smartphone, tablet, or web browser into a custom Stream Deck controller, while serving beautiful retro-themed, realtime HTML overlays directly to OBS Studio.*
+
+  <br/>
+  
+  <!-- Interface Preview -->
+  <img src="Gallery/stream_deck.png" alt="sDeck Stream Deck Interface" width="90%" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);" />
+
+  <br/><br/>
 
   [Features](#features) • [Screenshots](#screenshots) • [Quick Start](#quick-start) • [Configuration](#configuration) • [Stream Overlays](#stream-overlays) • [Troubleshooting](#troubleshooting)
 
