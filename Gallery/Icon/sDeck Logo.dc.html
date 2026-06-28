@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
+</helmet>
+
+<div style="min-height:100vh;background:#0b0d12;font-family:'Space Grotesk',sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:64px;padding:80px 60px;">
+
+  <!-- ── Full Wordmark ── -->
+  <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
+    <div id="wordmark-main" style="display:flex;align-items:center;gap:22px;padding:24px 36px;">
+      <div style="flex-shrink:0;width:80px;height:80px;background:#13151e;border-radius:16px;border:2px solid rgba(139,92,246,0.52);position:relative;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:5px;padding:11px;overflow:hidden;">
+        <div style="background:#ef4444;border-radius:3px;"></div>
+        <div style="background:#22c55e;border-radius:3px;"></div>
+        <div style="background:#3b82f6;border-radius:3px;"></div>
+        <div style="background:#9333ea;border-radius:3px;"></div>
+        <div style="background:#f97316;border-radius:3px;"></div>
+        <div style="background:#2d3748;border-radius:3px;"></div>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px;text-shadow:0 2px 10px rgba(0,0,0,1);">sD</div>
+      </div>
+      <div style="font-size:72px;font-weight:800;letter-spacing:-2px;line-height:1;">
+        <span style="color:#8b5cf6;">s</span><span style="color:#f8fafc;">Deck</span>
+      </div>
+    </div>
+    <div style="font-size:12px;font-weight:500;color:#2d3748;letter-spacing:4px;text-transform:uppercase;">Open-Source Stream Deck</div>
+    <button onClick="{{ dlWordmark }}" style="margin-top:4px;background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);border-radius:8px;padding:9px 22px;font-size:13px;color:#8b5cf6;font-weight:600;cursor:pointer;font-family:'Space Grotesk',sans-serif;letter-spacing:0.3px;">↓ Download Wordmark PNG</button>
+  </div>
+
+  <div style="width:500px;height:1px;background:rgba(255,255,255,0.06);"></div>
+
+  <!-- ── Icon Sizes ── -->
+  <div style="display:flex;flex-direction:column;align-items:center;gap:20px;">
+    <div style="font-size:10px;color:#2d3748;letter-spacing:3px;text-transform:uppercase;font-weight:500;">Icon Sizes — Transparent PNG</div>
+    <div style="display:flex;align-items:flex-end;gap:48px;">
+
+      <!-- 24 -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+        <div id="icon-24" style="width:24px;height:24px;background:#13151e;border-radius:5px;border:1px solid rgba(139,92,246,0.4);position:relative;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:1.5px;padding:3.5px;overflow:hidden;">
+          <div style="background:#ef4444;border-radius:1px;"></div>
+          <div style="background:#22c55e;border-radius:1px;"></div>
+          <div style="background:#3b82f6;border-radius:1px;"></div>
+          <div style="background:#9333ea;border-radius:1px;"></div>
+          <div style="background:#f97316;border-radius:1px;"></div>
+          <div style="background:#2d3748;border-radius:1px;"></div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:6px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,1);">sD</div>
+        </div>
+        <div style="font-size:10px;color:#374151;font-weight:500;">24px</div>
+        <button onClick="{{ dlIcon24 }}" style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.22);border-radius:4px;padding:3px 9px;font-size:9px;color:#8b5cf6;font-weight:600;cursor:pointer;font-family:inherit;">↓ PNG</button>
+      </div>
+
+      <!-- 40 -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+        <div id="icon-40" style="width:40px;height:40px;background:#13151e;border-radius:8px;border:1px solid rgba(139,92,246,0.44);position:relative;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:2.5px;padding:5.5px;overflow:hidden;">
+          <div style="background:#ef4444;border-radius:1.5px;"></div>
+          <div style="background:#22c55e;border-radius:1.5px;"></div>
+          <div style="background:#3b82f6;border-radius:1.5px;"></div>
+          <div style="background:#9333ea;border-radius:1.5px;"></div>
+          <div style="background:#f97316;border-radius:1.5px;"></div>
+          <div style="background:#2d3748;border-radius:1.5px;"></div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;text-shadow:0 1px 5px rgba(0,0,0,1);">sD</div>
+        </div>
+        <div style="font-size:10px;color:#374151;font-weight:500;">40px</div>
+        <button onClick="{{ dlIcon40 }}" style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.22);border-radius:4px;padding:3px 9px;font-size:9px;color:#8b5cf6;font-weight:600;cursor:pointer;font-family:inherit;">↓ PNG</button>
+      </div>
+
+      <!-- 64 -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+        <div id="icon-64" style="width:64px;height:64px;background:#13151e;border-radius:13px;border:1.5px solid rgba(139,92,246,0.5);position:relative;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:4px;padding:9px;overflow:hidden;">
+          <div style="background:#ef4444;border-radius:2.5px;"></div>
+          <div style="background:#22c55e;border-radius:2.5px;"></div>
+          <div style="background:#3b82f6;border-radius:2.5px;"></div>
+          <div style="background:#9333ea;border-radius:2.5px;"></div>
+          <div style="background:#f97316;border-radius:2.5px;"></div>
+          <div style="background:#2d3748;border-radius:2.5px;"></div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:#fff;letter-spacing:-0.5px;text-shadow:0 1px 8px rgba(0,0,0,1);">sD</div>
+        </div>
+        <div style="font-size:10px;color:#374151;font-weight:500;">64px</div>
+        <button onClick="{{ dlIcon64 }}" style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.22);border-radius:4px;padding:3px 9px;font-size:9px;color:#8b5cf6;font-weight:600;cursor:pointer;font-family:inherit;">↓ PNG</button>
+      </div>
+
+      <!-- 96 -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+        <div id="icon-96" style="width:96px;height:96px;background:#13151e;border-radius:20px;border:2px solid rgba(139,92,246,0.52);position:relative;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:6px;padding:13px;overflow:hidden;">
+          <div style="background:#ef4444;border-radius:3.5px;"></div>
+          <div style="background:#22c55e;border-radius:3.5px;"></div>
+          <div style="background:#3b82f6;border-radius:3.5px;"></div>
+          <div style="background:#9333ea;border-radius:3.5px;"></div>
+          <div style="background:#f97316;border-radius:3.5px;"></div>
+          <div style="background:#2d3748;border-radius:3.5px;"></div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;letter-spacing:-1px;text-shadow:0 2px 12px rgba(0,0,0,1);">sD</div>
+        </div>
+        <div style="font-size:10px;color:#374151;font-weight:500;">96px</div>
+        <button onClick="{{ dlIcon96 }}" style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.22);border-radius:4px;padding:3px 9px;font-size:9px;color:#8b5cf6;font-weight:600;cursor:pointer;font-family:inherit;">↓ PNG</button>
+      </div>
+
+      <!-- 128 -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+        <div id="icon-128" style="width:128px;height:128px;background:#13151e;border-radius:26px;border:2px solid rgba(139,92,246,0.54);position:relative;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:8px;padding:17px;overflow:hidden;">
+          <div style="background:#ef4444;border-radius:4px;"></div>
+          <div style="background:#22c55e;border-radius:4px;"></div>
+          <div style="background:#3b82f6;border-radius:4px;"></div>
+          <div style="background:#9333ea;border-radius:4px;"></div>
+          <div style="background:#f97316;border-radius:4px;"></div>
+          <div style="background:#2d3748;border-radius:4px;"></div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:800;color:#fff;letter-spacing:-1px;text-shadow:0 2px 16px rgba(0,0,0,1);">sD</div>
+        </div>
+        <div style="font-size:10px;color:#374151;font-weight:500;">128px</div>
+        <button onClick="{{ dlIcon128 }}" style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.22);border-radius:4px;padding:3px 9px;font-size:9px;color:#8b5cf6;font-weight:600;cursor:pointer;font-family:inherit;">↓ PNG</button>
+      </div>
+
+    </div>
+  </div>
+
+  <div style="width:500px;height:1px;background:rgba(255,255,255,0.06);"></div>
+
+  <!-- ── Light Background Variant ── -->
+  <div style="display:flex;flex-direction:column;align-items:center;gap:14px;">
+    <div style="font-size:10px;color:#2d3748;letter-spacing:3px;text-transform:uppercase;font-weight:500;">Light Background</div>
+    <div id="logo-light" style="background:#f0f2f5;border-radius:16px;padding:32px 52px;display:flex;align-items:center;gap:18px;">
+      <div style="flex-shrink:0;width:52px;height:52px;background:#0b0d12;border-radius:10px;border:1.5px solid rgba(139,92,246,0.45);position:relative;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:3.5px;padding:7.5px;overflow:hidden;">
+        <div style="background:#ef4444;border-radius:2px;"></div>
+        <div style="background:#22c55e;border-radius:2px;"></div>
+        <div style="background:#3b82f6;border-radius:2px;"></div>
+        <div style="background:#9333ea;border-radius:2px;"></div>
+        <div style="background:#f97316;border-radius:2px;"></div>
+        <div style="background:#374151;border-radius:2px;"></div>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,1);">sD</div>
+      </div>
+      <div style="font-size:42px;font-weight:800;letter-spacing:-1.5px;line-height:1;">
+        <span style="color:#7c3aed;">s</span><span style="color:#0f172a;">Deck</span>
+      </div>
+    </div>
+    <button onClick="{{ dlLight }}" style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);border-radius:8px;padding:9px 22px;font-size:13px;color:#8b5cf6;font-weight:600;cursor:pointer;font-family:'Space Grotesk',sans-serif;letter-spacing:0.3px;">↓ Download White BG PNG</button>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  async dlEl(id, filename, bg) {
+    await document.fonts.ready;
+    const el = document.getElementById(id);
+    if (!el) { console.warn('Element not found:', id); return; }
+    if (!window.htmlToImage) { console.warn('html-to-image not loaded'); return; }
+    const size = Math.min(el.offsetWidth, el.offsetHeight);
+    const pixelRatio = Math.max(2, Math.round(512 / size));
+    try {
+      const dataUrl = await window.htmlToImage.toPng(el, {
+        backgroundColor: bg !== undefined ? bg : null,
+        pixelRatio,
+        cacheBust: true,
+      });
+      const a = document.createElement('a');
+      a.download = filename;
+      a.href = dataUrl;
+      a.click();
+    } catch (e) {
+      console.error('Export failed:', e);
+    }
+  }
+
+  renderVals() {
+    return {
+      dlWordmark: () => this.dlEl('wordmark-main', 'sdeck-wordmark.png'),
+      dlIcon24:   () => this.dlEl('icon-24',  'sdeck-icon-24.png'),
+      dlIcon40:   () => this.dlEl('icon-40',  'sdeck-icon-40.png'),
+      dlIcon64:   () => this.dlEl('icon-64',  'sdeck-icon-64.png'),
+      dlIcon96:   () => this.dlEl('icon-96',  'sdeck-icon-96.png'),
+      dlIcon128:  () => this.dlEl('icon-128', 'sdeck-icon-128.png'),
+      dlLight:    () => this.dlEl('logo-light', 'sdeck-logo-white-bg.png', '#ffffff'),
+    };
+  }
+}
+</script>
+</body>
+</html>
