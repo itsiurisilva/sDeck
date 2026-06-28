@@ -1,7 +1,7 @@
 <div align="center">
 
   <!-- Logo -->
-  <img src="Gallery/logo_cropped.png" alt="sDeck Logo" width="320" style="border-radius: 8px; margin-bottom: 12px;" />
+  <img src="Gallery/logo_light.png" alt="sDeck Logo" width="320" style="border-radius: 8px; margin-bottom: 12px;" />
 
   # sDeck
 
