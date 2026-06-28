@@ -905,7 +905,7 @@ function connectWebSocket() {
 // -------------------------------------------------------------
 function populateSpotifyForm() {
   if (elSpotifyRedirectUriText) {
-    elSpotifyRedirectUriText.textContent = window.location.origin + '/callback';
+    elSpotifyRedirectUriText.textContent = (window.location.origin + '/callback').replace('localhost', '127.0.0.1');
   }
   
   if (settings.spotify) {
@@ -3341,7 +3341,7 @@ function checkFirstSetupStatus() {
       
       // Update dynamic redirect uri
       if (elWizSpotifyRedirectUri) {
-        elWizSpotifyRedirectUri.textContent = window.location.origin + '/callback';
+        elWizSpotifyRedirectUri.textContent = (window.location.origin + '/callback').replace('localhost', '127.0.0.1');
       }
     }
   } else {

@@ -1387,7 +1387,7 @@ app.get('/login', async (req, res) => {
     return res.status(400).send('Spotify Client ID not configured!');
   }
   const scopes = 'user-read-currently-playing user-read-playback-state user-modify-playback-state';
-  const redirectUri = `${req.protocol}://${req.headers.host}/callback`;
+  const redirectUri = `${req.protocol}://${req.headers.host}/callback`.replace('localhost', '127.0.0.1');
   
   res.redirect('https://accounts.spotify.com/authorize?' + 
     new URLSearchParams({
@@ -1402,7 +1402,7 @@ app.get('/login', async (req, res) => {
 // Spotify Auth Callback
 app.get('/callback', async (req, res) => {
   const code = req.query.code || null;
-  const redirectUri = `${req.protocol}://${req.headers.host}/callback`;
+  const redirectUri = `${req.protocol}://${req.headers.host}/callback`.replace('localhost', '127.0.0.1');
 
   if (!code) {
     return res.status(400).send('Authorization code missing.');
