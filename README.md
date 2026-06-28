@@ -1,9 +1,9 @@
 <div align="center">
 
-  <!-- Logo/Gif -->
+  <!-- Logo -->
   <img src="public/uploads/discord_white_icon_1782572425168.webp" alt="sDeck Logo" width="96" style="border-radius: 12px; margin-bottom: 12px;" />
 
-  # 🌟 sDeck
+  # sDeck 😂
 
   ### A Sleek, Low-Latency Web-Based Stream Deck & Overlay System for OBS, Spotify, Twitch, and Streamlabs
 
@@ -14,24 +14,24 @@
 
   *Transform any smartphone, tablet, or web browser into a custom Stream Deck controller, while serving beautiful retro-themed, realtime HTML overlays directly to OBS Studio.*
 
-  [Key Features](#-features) • [Quick Start](#-quick-start) • [Configuration](#-configuration) • [Stream Overlays](#-stream-overlays) • [Troubleshooting](#-troubleshooting)
+  [Features](#features) • [Quick Start](#quick-start) • [Configuration](#configuration) • [Stream Overlays](#stream-overlays) • [Troubleshooting](#troubleshooting)
 
 </div>
 
 ---
 
-## ⚡ Features
+## Features
 
-*   **📱 Remote Web Deck**: Control scene switching, transitions, microphone toggles, and system commands from any device on your local network (mobile, tablet, or dual-monitor).
-*   **🎵 Integrated Spotify Control**: Realtime track progress, metadata polling, play/pause/skip commands, and album art synchronization.
-*   **💬 Twitch Chat Integration**: Bind common chat macros or announcements directly to action buttons on your deck.
-*   **🔔 Streamlabs Alerts Integration**: Listen to follower, subscription, and donation events in real-time, displaying custom alerts and updating follower goals instantly.
-*   **📺 Realtime Overlays**: Responsive HTML/JS overlays (Top Bar Info, Social Tickers, "Now Playing" widgets) that update live via WebSocket.
-*   **🔒 Security First**: Critical credentials, passwords, and tokens are stored securely in local git-ignored configurations, ensuring your stream keys never leak.
+*   **Remote Web Deck**: Control scene switching, transitions, microphone toggles, and system commands from any device on your local network (mobile, tablet, or dual-monitor).
+*   **Integrated Spotify Control**: Realtime track progress, metadata polling, play/pause/skip commands, and album art synchronization.
+*   **Twitch Chat Integration**: Bind common chat macros or announcements directly to action buttons on your deck.
+*   **Streamlabs Alerts Integration**: Listen to follower, subscription, and donation events in real-time, displaying custom alerts and updating follower goals instantly.
+*   **Realtime Overlays**: Responsive HTML/JS overlays (Top Bar Info, Social Tickers, "Now Playing" widgets) that update live via WebSocket.
+*   **Security First**: Critical credentials, passwords, and tokens are stored securely in local git-ignored configurations, ensuring your stream keys never leak.
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 sDeck is designed to bootstrap itself in a single step, automatically installing dependencies and generating template configurations.
 
@@ -41,10 +41,10 @@ sDeck is designed to bootstrap itself in a single step, automatically installing
 ### Launching sDeck
 Choose the appropriate script for your Operating System:
 
-#### 💻 Windows
+#### Windows
 Double-click `INICIAR.bat` in the root folder.
 
-#### 🍎 macOS / 🐧 Linux
+#### macOS / Linux
 Open your terminal inside the project directory and run:
 ```bash
 chmod +x start.sh
@@ -55,7 +55,7 @@ chmod +x start.sh
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 Your private credentials, tokens, and button mappings are kept out of version control using local template copies.
 
@@ -78,12 +78,12 @@ YOUTUBE_HANDLE=@your_youtube
 
 ---
 
-## 🔗 External Integrations
+## External Integrations
 
 ### 1. OBS Studio (WebSocket v5.x)
 1. Open OBS Studio and navigate to **Tools** -> **WebSocket Server Settings**.
 2. Enable the WebSocket server (default port: `4455`).
-3. Set an **Server Password** (recommended).
+3. Set a **Server Password** (recommended).
 4. Enter the Port and Password in the sDeck Dashboard under **OBS Settings**.
 
 ### 2. Spotify API Developer App
@@ -110,7 +110,7 @@ To trigger alert screens and sounds:
 
 ---
 
-## 📺 Stream Overlays
+## Stream Overlays
 
 Add these URLs as **Browser Sources** in OBS Studio:
 
@@ -123,13 +123,13 @@ Add these URLs as **Browser Sources** in OBS Studio:
 
 ---
 
-## 🛠️ Troubleshooting
+## Troubleshooting
 
-### ❌ Spotify returns `INVALID_CLIENT` or `redirect_uri_mismatch`
+### Spotify returns `INVALID_CLIENT` or `redirect_uri_mismatch`
 *   **Fix**: Verify that you are using `http://127.0.0.1:3000/callback` in the Spotify Developer Dashboard. Ensure it matches the address shown in the sDeck setup page exactly. Do not use `localhost` in the Spotify Developer settings.
 
-### ❌ Server fails to bind to port (`EADDRINUSE`)
+### Server fails to bind to port (`EADDRINUSE`)
 *   **Fix**: If port `3000` is already in use by another application, open `.env` and change `PORT=3000` to a different port (e.g. `PORT=4000`). Remember to update your Spotify Developer Dashboard Redirect URI to match (e.g. `http://127.0.0.1:4000/callback`).
 
-### ❌ OBS connection state is disconnected
+### OBS connection state is disconnected
 *   **Fix**: Check that OBS Studio is open, WebSocket Server is enabled under *Tools -> WebSocket Server Settings*, and the port/password match what you entered in the dashboard settings.
