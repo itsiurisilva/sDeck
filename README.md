@@ -3,7 +3,7 @@
   <!-- Logo -->
   <img src="public/uploads/discord_white_icon_1782572425168.webp" alt="sDeck Logo" width="96" style="border-radius: 12px; margin-bottom: 12px;" />
 
-  # sDeck 😂
+  # sDeck
 
   ### A Sleek, Low-Latency Web-Based Stream Deck & Overlay System for OBS, Spotify, Twitch, and Streamlabs
 
