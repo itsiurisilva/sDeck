@@ -1,6 +1,6 @@
 <div align="center">
 
-  # sDeck 😂
+  # sDeck
 
   ### A Fully Self-Hosted DIY Stream Deck to Control Your PC & OBS from Any Device on Your Wi-Fi Network
 
