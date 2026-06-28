@@ -36,6 +36,7 @@
 | 🔔 **Streamlabs Alerts** | Trigger alert screens and sounds from live events in real time. |
 | ⚡ **Custom Commands** | Chain PowerShell / CMD scripts, app launchers, and OBS actions into one button. |
 | 🎙️ **Soundboard** | Instant local sound effects triggered directly from the deck. |
+| **Reason** | This deck was initially developed for https://www.twitch.tv/samuca2835 my favorite Streamer/Friend ❤️ |
 
 ---
 
