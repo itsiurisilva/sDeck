@@ -1,15 +1,18 @@
 <div align="center">
 
+  <!-- Logo -->
+  <img src="Gallery/logo_cropped.png" alt="sDeck Logo" width="320" style="border-radius: 8px; margin-bottom: 12px;" />
+
   # sDeck
 
-  ### A Fully Self-Hosted DIY Stream Deck to Control Your PC & OBS from Any Device on Your Wi-Fi Network
+  ### A Sleek, Low-Latency Web-Based Stream Deck & Overlay System for OBS, Spotify, Twitch, and Streamlabs
 
-  [![Node Version](https://img.shields.io/badge/Node.js-%3E%3D%2018.0.0-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
-  [![OBS WebSocket](https://img.shields.io/badge/OBS%20WebSocket-v5.x-ED1C24?style=flat-square&logo=obs-studio&logoColor=white)](https://obsproject.com/)
-  [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-  [![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen.svg?style=flat-square)](https://makeapullrequest.com)
+  [![Node Version](https://img.shields.io/badge/Node.js-%3E%3D%2018.0.0-20c050?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
+  [![OBS WebSocket](https://img.shields.io/badge/OBS%20WebSocket-v5.x-e04040?style=flat-square&logo=obs-studio&logoColor=white)](https://obsproject.com/)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-3080f0.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+  [![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-9030e0.svg?style=flat-square)](https://makeapullrequest.com)
 
-  *Host sDeck on your main computer and access it instantly from any smartphone, tablet, or secondary screen connected to the same Wi-Fi network. Command OBS, control system volume, open apps, and run custom scripting without specialized hardware.*
+  *Transform any smartphone, tablet, or web browser into a custom Stream Deck controller, while serving beautiful retro-themed, realtime HTML overlays directly to OBS Studio.*
 
   <br/>
   
@@ -26,19 +29,19 @@
 
 ## Features
 
-*   **🏠 Fully Self-Hosted & Local**: Runs completely on your local machine. No external servers or cloud accounts required.
-*   **📱 Multi-Device Wi-Fi Access**: Host on your streaming PC and open the deck interface on any phone, tablet, or laptop via your local network.
-*   **💻 Absolute PC & System Command**: Control Windows/Linux system volume, launch applications, trigger a local soundboard, or execute custom scripts.
-*   **⚙️ Custom Commands & Macros (PowerShell / CMD)**: Create, edit, and chain custom actions. Write PowerShell scripts, CMD commands, OBS requests, or Twitch chat macros to execute complex workflows with a single button press.
-*   **🎥 OBS Studio Control**: Native WebSocket v5 integration to switch scenes, toggle sources, toggle streams/recording, and mute audio inputs.
-*   **🔌 Companion API Integrations (Optional)**: Seamless secondary integrations with **Spotify** (now playing details, play, pause, volume, track progress), **Streamlabs** (realtime alerts and live events), and **Twitch Chat** (chat macro announcements).
+*   **Fully Self-Hosted & Local**: Runs completely on your local machine. No external servers or cloud accounts required.
+*   **Multi-Device Wi-Fi Access**: Host on your streaming PC and open the deck interface on any phone, tablet, or laptop via your local network.
+*   **Absolute PC & System Command**: Control Windows/Linux system volume, launch applications, trigger a local soundboard, or execute custom scripts.
+*   **Custom Commands & Macros (PowerShell / CMD)**: Create, edit, and chain custom actions. Write PowerShell scripts, CMD commands, OBS requests, or Twitch chat macros to execute complex workflows with a single button press.
+*   **OBS Studio Control**: Native WebSocket v5 integration to switch scenes, toggle sources, toggle streams/recording, and mute audio inputs.
+*   **Companion API Integrations (Optional)**: Seamless secondary integrations with **Spotify** (now playing details, play, pause, volume, track progress), **Streamlabs** (realtime alerts and live events), and **Twitch Chat** (chat macro announcements).
 
 ---
 
 ## Screenshots
 
 <details>
-<summary>📸 Click to expand dashboard screenshots</summary>
+<summary>Click to expand dashboard screenshots</summary>
 <br/>
 
 ### Stream Deck Interface
