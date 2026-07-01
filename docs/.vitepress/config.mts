@@ -15,6 +15,7 @@ export default defineConfig({
   head: [
     ['link', { rel: 'icon', href: '/sDeck/favicon.ico' }],
     ['meta', { name: 'theme-color', content: '#8b5cf6' }],
+    ['meta', { name: 'google-site-verification', content: 'BTDfMUdk9CkFAtH7_YQGhfwmDV-wmCgGCDqMcEF11TM' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:site_name', content: 'sDeck' }],
     ['meta', { property: 'og:title', content: 'sDeck — Free, Self-Hosted Stream Deck Alternative' }],
