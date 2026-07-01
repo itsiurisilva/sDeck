@@ -1,0 +1,8 @@
+# GitHub Funding Configuration
+# See details: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+
+# You can add your GitHub Sponsors username:
+# github: [itsiurisilva]
+
+# PayPal is added as a custom URL:
+custom: ['https://paypal.me/itsiurisilva']
