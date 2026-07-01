@@ -11,6 +11,7 @@ import os from 'os';
 import { OBSWebSocket } from 'obs-websocket-js';
 import multer from 'multer';
 import { io } from 'socket.io-client';
+import { generatePin, isValidPin, isLocalRequest, isValidProfilesPayload } from './lib/validators.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -106,6 +107,9 @@ const defaultSettings = {
   twitch: {
     username: "",
     chatToken: ""
+  },
+  security: {
+    pin: ""
   }
 };
 
@@ -140,6 +144,22 @@ let settingsConfig = await loadJson(SETTINGS_PATH, defaultSettings);
 let profilesConfig = await loadJson(PROFILES_PATH, defaultProfiles);
 let stateConfig = await loadJson(STATE_PATH, defaultState);
 
+// Pairing PIN: required for any non-localhost device to use the WebSocket/API.
+// The host machine itself (loopback requests) never needs it.
+if (!settingsConfig.security) settingsConfig.security = {};
+if (!settingsConfig.security.pin) {
+  settingsConfig.security.pin = generatePin();
+  await saveJson(SETTINGS_PATH, settingsConfig);
+}
+
+// Settings payload sent to connected clients should never include the pairing
+// PIN itself — it's only readable via the local-only /api/security/pin route.
+function clientSafeSettings() {
+  const copy = { ...settingsConfig };
+  delete copy.security;
+  return copy;
+}
+
 function getTwitchData() {
   return {
     viewerCount: stateConfig.viewer_count,
@@ -163,9 +183,20 @@ const wss = new WebSocketServer({ server });
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Non-local devices (phones/tablets on the LAN) must present the pairing PIN
+// on every API call. Requests from the host machine itself are always trusted.
+app.use('/api', (req, res, next) => {
+  if (isLocalRequest(req)) return next();
+  const pin = req.header('x-sdeck-pin') || req.query.pin;
+  if (!isValidPin(pin, settingsConfig.security.pin)) {
+    return res.status(401).json({ error: 'Missing or invalid pairing PIN.' });
+  }
+  next();
+});
+
 // Global state
 let currentSpotifyState = {
-  title: 'Nenhuma música tocando',
+  title: 'No track playing',
   artist: 'Spotify',
   progressStr: '0:00',
   durationStr: '0:00',
@@ -192,10 +223,40 @@ const storage = multer.diskStorage({
     cb(null, `${fileName}_${Date.now()}${fileExt}`);
   }
 });
-const upload = multer({
+function mimeFileFilter(allowedPrefix) {
+  return (req, file, cb) => {
+    if (file.mimetype.startsWith(allowedPrefix)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Invalid file type: expected ${allowedPrefix}*, got ${file.mimetype}`));
+    }
+  };
+}
+
+const uploadAudio = multer({
   storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: mimeFileFilter('audio/')
 });
+
+const uploadImage = multer({
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: mimeFileFilter('image/')
+});
+
+// Wraps a multer middleware so file-type/size rejections come back as JSON
+// instead of falling through to Express's default HTML error page.
+function handleUpload(multerMiddleware) {
+  return (req, res, next) => {
+    multerMiddleware(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ success: false, error: err.message || 'Upload failed' });
+      }
+      next();
+    });
+  };
+}
 
 // OBS Client Setup
 const obs = new OBSWebSocket();
@@ -799,12 +860,13 @@ async function handleAction(type, actionData, ws) {
       ws.send(JSON.stringify({ type: 'error', message: 'No system command specified' }));
       return;
     }
-    exec(command, (error, stdout, stderr) => {
+    exec(command, { timeout: 15000, killSignal: 'SIGTERM' }, (error, stdout, stderr) => {
       if (error) {
+        const reason = error.killed ? 'Command timed out after 15s and was terminated' : error.message;
         console.error(`System command execution error:`, error);
         ws.send(JSON.stringify({
           type: 'error',
-          message: `Failed to launch: ${error.message}`
+          message: `Failed to launch: ${reason}`
         }));
         return;
       }
@@ -816,6 +878,39 @@ async function handleAction(type, actionData, ws) {
       type: 'play_sound',
       sound: file
     });
+  } else if (type === 'url') {
+    const url = actionData.url;
+    if (!url || url.trim() === '') {
+      ws.send(JSON.stringify({ type: 'error', message: 'No URL specified' }));
+      return;
+    }
+    try {
+      await open(url);
+    } catch (err) {
+      console.error('URL open error:', err);
+      ws.send(JSON.stringify({ type: 'error', message: `Failed to open URL: ${err.message}` }));
+    }
+  } else if (type === 'webhook') {
+    const url = actionData.url;
+    if (!url || url.trim() === '') {
+      ws.send(JSON.stringify({ type: 'error', message: 'No webhook URL specified' }));
+      return;
+    }
+    try {
+      const method = (actionData.method || 'GET').toUpperCase();
+      const options = { method };
+      if (method !== 'GET' && actionData.body) {
+        options.headers = { 'Content-Type': 'application/json' };
+        options.body = actionData.body;
+      }
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        console.warn(`Webhook responded with status ${response.status}`);
+      }
+    } catch (err) {
+      console.error('Webhook error:', err);
+      ws.send(JSON.stringify({ type: 'error', message: `Webhook failed: ${err.message}` }));
+    }
   } else {
     console.log(`Action type ${type} handled client-side.`);
   }
@@ -824,7 +919,15 @@ async function handleAction(type, actionData, ws) {
 // -------------------------------------------------------------
 // WEBSOCKET CLIENTS ROUTING
 // -------------------------------------------------------------
-wss.on('connection', async (ws) => {
+wss.on('connection', async (ws, req) => {
+  if (!isLocalRequest(req)) {
+    const pin = new URL(req.url, 'http://localhost').searchParams.get('pin');
+    if (!isValidPin(pin, settingsConfig.security.pin)) {
+      ws.send(JSON.stringify({ type: 'error', message: 'Invalid or missing pairing PIN.' }));
+      ws.close(4001, 'Invalid PIN');
+      return;
+    }
+  }
   console.log('[WebSocket] Client connected');
 
   // 1. Send Deck Configuration and OBS data
@@ -832,7 +935,7 @@ wss.on('connection', async (ws) => {
     type: 'init_data',
     profiles: profilesConfig.profiles,
     activeProfile: profilesConfig.activeProfile,
-    settings: settingsConfig,
+    settings: clientSafeSettings(),
     obsConnected,
     obsCurrentScene,
     obsMuteStates,
@@ -871,7 +974,7 @@ wss.on('connection', async (ws) => {
           type: 'init_data',
           profiles: profilesConfig.profiles,
           activeProfile: profilesConfig.activeProfile,
-          settings: settingsConfig,
+          settings: clientSafeSettings(),
           obsConnected,
           obsCurrentScene,
           obsMuteStates,
@@ -896,6 +999,10 @@ wss.on('connection', async (ws) => {
         break;
 
       case 'save_profiles':
+        if (!isValidProfilesPayload(data.profiles)) {
+          ws.send(JSON.stringify({ type: 'error', message: 'Rejected: malformed profiles payload.' }));
+          return;
+        }
         profilesConfig.profiles = data.profiles;
         if (data.activeProfile) {
           profilesConfig.activeProfile = data.activeProfile;
@@ -914,7 +1021,7 @@ wss.on('connection', async (ws) => {
       case 'save_settings':
         settingsConfig = data.settings;
         if (await saveJson(SETTINGS_PATH, settingsConfig)) {
-          broadcast({ type: 'settings_updated', settings: settingsConfig, spotifyUser: spotifyUserProfile });
+          broadcast({ type: 'settings_updated', settings: clientSafeSettings(), spotifyUser: spotifyUserProfile });
           connectToObs();
           connectStreamlabs();
           connectTwitchIrc();
@@ -935,11 +1042,13 @@ wss.on('connection', async (ws) => {
         }
         break;
 
-      case 'send_chat_message':
-        if (!twitchIrcWs) {
+      case 'send_chat_message': {
+        const sent = sendTwitchChatMessage(data.message);
+        if (!sent) {
           ws.send(JSON.stringify({ type: 'error', message: 'Twitch Chat not connected! Configure the OAuth Token in Config > Stream & Alerts.' }));
-          return;
-        }break;
+        }
+        break;
+      }
 
       default:
         console.log('[WebSocket] Unhandled message:', data.type);
@@ -972,6 +1081,21 @@ app.get('/api/status', async (req, res) => {
   });
 });
 
+// Pairing PIN management — only ever reachable from the host machine itself
+// (the /api gate above already blocks non-local requests without a valid PIN,
+// which is exactly the point: you must already be at the host to read or
+// reset the secret you hand out to a new device).
+app.get('/api/security/pin', (req, res) => {
+  res.json({ pin: settingsConfig.security.pin });
+});
+
+app.post('/api/security/pin/regenerate', async (req, res) => {
+  settingsConfig.security.pin = generatePin();
+  const ok = await saveJson(SETTINGS_PATH, settingsConfig);
+  if (!ok) return res.status(500).json({ error: 'Failed to save new PIN' });
+  res.json({ pin: settingsConfig.security.pin });
+});
+
 // New endpoints for disconnection and connection tests
 app.post('/api/spotify/disconnect', async (req, res) => {
   try {
@@ -982,7 +1106,7 @@ app.post('/api/spotify/disconnect', async (req, res) => {
     await saveJson(SETTINGS_PATH, settingsConfig);
     spotifyUserProfile = null;
     currentSpotifyState = {
-      title: 'Nenhuma música tocando',
+      title: 'No track playing',
       artist: 'Spotify',
       progressStr: '0:00',
       durationStr: '0:00',
@@ -991,7 +1115,7 @@ app.post('/api/spotify/disconnect', async (req, res) => {
       isPlaying: false
     };
     broadcast({ type: 'spotify', data: currentSpotifyState });
-    broadcast({ type: 'settings_updated', settings: settingsConfig, spotifyUser: spotifyUserProfile });
+    broadcast({ type: 'settings_updated', settings: clientSafeSettings(), spotifyUser: spotifyUserProfile });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1011,7 +1135,7 @@ app.post('/api/twitch/disconnect', async (req, res) => {
     }
     twitchChatConnected = false;
     broadcast({ type: 'twitch_irc_status', connected: false });
-    broadcast({ type: 'settings_updated', settings: settingsConfig, spotifyUser: spotifyUserProfile });
+    broadcast({ type: 'settings_updated', settings: clientSafeSettings(), spotifyUser: spotifyUserProfile });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1145,7 +1269,7 @@ app.post('/api/settings', async (req, res) => {
   });
 
   // Broadcast settings update to all active frontend clients
-  broadcast({ type: 'settings_updated', settings: settingsConfig, spotifyUser: spotifyUserProfile });
+  broadcast({ type: 'settings_updated', settings: clientSafeSettings(), spotifyUser: spotifyUserProfile });
 
   if (reloadSpotify) {
     settingsConfig.spotify.refresh_token = "";
@@ -1285,7 +1409,8 @@ app.get('/api/soundboard/sounds', async (req, res) => {
         id: s.id,
         name: soundMeta.displayName || s.name,
         icon: s.icon,
-        isSynth: true
+        isSynth: true,
+        volume: soundMeta.volume ?? 100
       });
     });
 
@@ -1306,7 +1431,8 @@ app.get('/api/soundboard/sounds', async (req, res) => {
           name: meta[f]?.displayName || defaultName,
           file: `/uploads/${f}`,
           size: stats.size,
-          isSynth: false
+          isSynth: false,
+          volume: meta[f]?.volume ?? 100
         });
       }
     }
@@ -1317,7 +1443,7 @@ app.get('/api/soundboard/sounds', async (req, res) => {
 });
 
 // Soundboard API: Upload sound
-app.post('/api/soundboard/upload', upload.single('sound'), async (req, res) => {
+app.post('/api/soundboard/upload', handleUpload(uploadAudio.single('sound')), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
@@ -1362,10 +1488,21 @@ app.delete('/api/soundboard/sounds/:id', async (req, res) => {
 app.patch('/api/soundboard/sounds/:id', async (req, res) => {
   try {
     const id = req.params.id;
-    const { displayName } = req.body;
-    if (!displayName) return res.status(400).json({ error: 'displayName required' });
+    const { displayName, volume } = req.body;
+    if (displayName === undefined && volume === undefined) {
+      return res.status(400).json({ error: 'displayName or volume required' });
+    }
     const meta = await loadJson(SOUNDS_META_PATH, {});
-    meta[id] = { ...(meta[id] || {}), displayName };
+    const update = { ...(meta[id] || {}) };
+    if (displayName !== undefined) update.displayName = displayName;
+    if (volume !== undefined) {
+      const v = Number(volume);
+      if (!Number.isFinite(v) || v < 0 || v > 100) {
+        return res.status(400).json({ error: 'volume must be a number between 0 and 100' });
+      }
+      update.volume = v;
+    }
+    meta[id] = update;
     await saveJson(SOUNDS_META_PATH, meta);
     res.json({ success: true });
   } catch (err) {
@@ -1374,7 +1511,7 @@ app.patch('/api/soundboard/sounds/:id', async (req, res) => {
 });
 
 // Button Image Upload
-app.post('/api/button-image/upload', upload.single('image'), async (req, res) => {
+app.post('/api/button-image/upload', handleUpload(uploadImage.single('image')), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, error: 'No image uploaded' });
   }
@@ -1439,7 +1576,7 @@ app.get('/callback', async (req, res) => {
     await fetchSpotifyProfile();
     
     // Broadcast update to all connected clients
-    broadcast({ type: 'settings_updated', settings: settingsConfig, spotifyUser: spotifyUserProfile });
+    broadcast({ type: 'settings_updated', settings: clientSafeSettings(), spotifyUser: spotifyUserProfile });
 
     res.send(`
       <html>
@@ -1526,6 +1663,16 @@ function getLocalIpAddress() {
 }
 
 // -------------------------------------------------------------
+// PROCESS-LEVEL SAFETY NETS
+// -------------------------------------------------------------
+process.on('unhandledRejection', (reason) => {
+  console.error('[UnhandledRejection]', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[UncaughtException]', err);
+});
+
+// -------------------------------------------------------------
 // BOOT
 // -------------------------------------------------------------
 const PORT = settingsConfig.server.port || 3000;
@@ -1535,6 +1682,7 @@ server.listen(PORT, async () => {
   console.log(`🚀 Unified Streamer Panel is running!`);
   console.log(`💻 Local access: http://localhost:${PORT}`);
   console.log(`📱 Mobile/Deck access: http://${localIp}:${PORT}`);
+  console.log(`🔑 Pairing PIN (needed by other devices on your Wi-Fi): ${settingsConfig.security.pin}`);
   console.log('======================================================\n');
   
   // Auto connect components

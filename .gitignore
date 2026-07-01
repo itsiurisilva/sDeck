@@ -9,3 +9,4 @@ config/sounds-meta.json
 *.log
 .env
 .env.local
+*.lnk
