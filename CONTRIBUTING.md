@@ -34,6 +34,10 @@ Both must pass. If you touch `public/index.html`, `public/css/style.css`, or `pu
 
 Use the issue templates — they ask for just enough detail (steps to reproduce, environment) to act on a report without back-and-forth.
 
+## Support the project financially
+
+Not everyone has time for code or bug reports, and that's fine — if sDeck has been useful to you, you can also support it directly via [PayPal](https://paypal.me/itsiurisilva). It's entirely optional and separate from code contributions.
+
 ## Code of Conduct
 
 This project follows a [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you're expected to uphold it.
