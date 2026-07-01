@@ -4,11 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>sDeck</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
 
-  <!-- Google Fonts: Outfit & VT323 -->
+  <!-- Google Fonts: Outfit, VT323 & Space Grotesk -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=VT323&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700;800&family=VT323&display=swap" rel="stylesheet">
 
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -18,12 +19,17 @@
 </head>
 <body>
   <div class="app-container">
+    <!-- Thin strip along the very top edge; hovering it peeks the header back into view while auto-hide is active -->
+    <div id="header-hover-zone" class="header-hover-zone"></div>
     <!-- Top Header -->
     <header class="app-header">
       <div class="header-left">
         <div class="logo-wrap">
           <span id="logo-live-dot" class="logo-live-dot" style="display:none;"></span>
-          <h1 class="app-logo">s<span>Deck</span></h1>
+          <a href="https://github.com/itsiurisilva/sDeck" target="_blank" rel="noopener noreferrer" class="logo-link">
+            <img src="/sdeck-icon-64.png" alt="sDeck Logo" class="logo-icon">
+            <h1 class="app-logo">s<span>Deck</span></h1>
+          </a>
         </div>
         <div class="connection-status">
           <div id="status-server" class="status-indicator disconnected" title="Server Connection">
@@ -81,29 +87,39 @@
               <!-- Loaded dynamically -->
             </div>
             <div class="profile-action-container">
-              <button id="btn-add-profile" class="add-profile-btn" title="Add New Profile">
+              <button id="btn-add-profile" class="add-profile-btn" title="Add New Profile" aria-label="Add New Profile">
                 <i data-lucide="plus"></i>
               </button>
-              <button id="btn-manage-profiles" class="profile-settings-btn" title="Manage Active Profile">
+              <button id="btn-manage-profiles" class="profile-settings-btn" title="Manage Active Profile" aria-label="Manage Active Profile">
                 <i data-lucide="settings"></i>
               </button>
               <button id="btn-export-profiles" class="profile-io-btn" title="Export Profiles (JSON)">
-                <i data-lucide="download"></i> Export
+                <i data-lucide="download"></i> <span class="profile-io-btn-label">Export</span>
               </button>
               <button id="btn-import-profiles" class="profile-io-btn" title="Import Profiles (JSON)">
-                <i data-lucide="upload"></i> Import
+                <i data-lucide="upload"></i> <span class="profile-io-btn-label">Import</span>
               </button>
               <input type="file" id="import-profiles-input" accept=".json" style="display:none;">
             </div>
           </div>
 
-          <label class="edit-toggle" for="edit-mode-checkbox">
-            <span class="toggle-label">Edit Mode</span>
-            <div class="toggle-switch">
-              <input type="checkbox" id="edit-mode-checkbox">
-              <span class="toggle-slider"></span>
-            </div>
-          </label>
+          <div class="toggle-group">
+            <label class="edit-toggle" for="auto-hide-header-checkbox" title="Hides the top header while you're using the deck; hover the very top edge of the screen to bring it back">
+              <span class="toggle-label">Auto-hide Header</span>
+              <div class="toggle-switch">
+                <input type="checkbox" id="auto-hide-header-checkbox">
+                <span class="toggle-slider"></span>
+              </div>
+            </label>
+
+            <label class="edit-toggle" for="edit-mode-checkbox">
+              <span class="toggle-label">Edit Mode</span>
+              <div class="toggle-switch">
+                <input type="checkbox" id="edit-mode-checkbox">
+                <span class="toggle-slider"></span>
+              </div>
+            </label>
+          </div>
         </div>
 
         <div class="deck-workspace">
@@ -130,7 +146,7 @@
           <aside id="editor-drawer" class="editor-drawer hidden">
             <div class="drawer-header">
               <h3>Edit Button</h3>
-              <button id="editor-close" class="close-btn">&times;</button>
+              <button id="editor-close" class="close-btn" aria-label="Close">&times;</button>
             </div>
 
             <!-- LIVE PREVIEW -->
@@ -158,6 +174,24 @@
                       <i data-lucide="image"></i> Image
                     </button>
                   </div>
+                </div>
+
+                <!-- PAD STYLE SELECTOR -->
+                <div class="form-group">
+                  <label>Pad Style</label>
+                  <div class="visual-type-tabs" id="widget-type-tabs">
+                    <button type="button" class="visual-type-btn active" id="widget-tab-button" data-widget="button">
+                      <i data-lucide="square"></i> Button
+                    </button>
+                    <button type="button" class="visual-type-btn" id="widget-tab-switch" data-widget="switch">
+                      <i data-lucide="toggle-left"></i> Switch
+                    </button>
+                    <button type="button" class="visual-type-btn" id="widget-tab-knob" data-widget="knob">
+                      <i data-lucide="disc"></i> Knob
+                    </button>
+                  </div>
+                  <div class="icon-help" id="widget-knob-hint" style="display:none;">Knobs are dragged up/down to set a level, so only volume-type actions are shown below.</div>
+                  <div class="icon-help" id="widget-switch-hint" style="display:none;">Switches fire one of two independent commands — pick what runs when turned ON and what runs when turned OFF below.</div>
                 </div>
 
                 <!-- ICON SECTION -->
@@ -193,6 +227,7 @@
                       <p>Drag image here or <span class="highlight">click to browse</span></p>
                       <input type="file" id="btn-image-input" accept="image/*" style="display:none;">
                     </div>
+                    <div id="btn-image-upload-progress" class="upload-progress-bar hidden"><div class="upload-progress-fill"></div></div>
                     <div id="btn-image-preview-container" class="btn-image-preview-container" style="display:none;">
                       <img id="btn-image-preview" class="btn-image-preview" src="" alt="Preview">
                       <button type="button" id="btn-remove-image" class="danger-btn">Remove Image</button>
@@ -226,9 +261,10 @@
                   </div>
                 </div>
 
+                <div id="primary-action-editor">
                 <div class="form-group">
                   <label for="btn-action-type">Action Type</label>
-                  <select id="btn-action-type">
+                  <select id="btn-action-type" data-role="action-type">
                     <option value="none">None / Visual Only</option>
                     <option value="obs">OBS Command</option>
                     <option value="system">System (Command / PowerShell / App)</option>
@@ -237,98 +273,113 @@
                     <option value="macro">Macro (Multiple Actions)</option>
                     <option value="clipboard">Copy to Clipboard</option>
                     <option value="twitch_chat">Send to Twitch Chat</option>
+                    <option value="spotify_volume">Spotify Volume</option>
+                    <option value="url">Open URL</option>
+                    <option value="webhook">Webhook / HTTP Request</option>
                   </select>
                 </div>
 
                 <!-- OBS Action Fields -->
-                <div id="fields-obs" class="action-fields hidden">
+                <div id="fields-obs" class="action-fields hidden" data-role="fields-obs">
                   <div class="form-group">
                     <label for="obs-cmd">OBS Command</label>
-                    <select id="obs-cmd">
+                    <select id="obs-cmd" data-role="obs-cmd">
                       <option value="SetCurrentProgramScene">Switch Scene</option>
                       <option value="ToggleInputMute">Toggle Mute</option>
                       <option value="ToggleStream">Toggle Stream</option>
                       <option value="ToggleRecord">Toggle Recording</option>
                       <option value="ToggleSourceVisibility">Toggle Source Visibility</option>
+                      <option value="SetInputVolume">Set Volume</option>
                       <option value="Custom">Custom Request</option>
                     </select>
                   </div>
 
-                  <div id="param-obs-scene" class="form-group obs-param hidden">
+                  <div id="param-obs-scene" class="form-group obs-param hidden" data-role="param-obs-scene">
                     <label for="obs-scene-select">Target Scene</label>
-                    <select id="obs-scene-select"></select>
-                    <input type="text" id="obs-scene-text" placeholder="Or type scene name manually" class="mt-1">
+                    <select id="obs-scene-select" data-role="obs-scene-select"></select>
+                    <input type="text" id="obs-scene-text" data-role="obs-scene-text" placeholder="Or type scene name manually" class="mt-1">
                   </div>
 
-                  <div id="param-obs-input" class="form-group obs-param hidden">
+                  <div id="param-obs-input" class="form-group obs-param hidden" data-role="param-obs-input">
                     <label for="obs-input-select">Audio Input</label>
-                    <select id="obs-input-select"></select>
-                    <input type="text" id="obs-input-text" placeholder="Or type channel name manually" class="mt-1">
+                    <select id="obs-input-select" data-role="obs-input-select"></select>
+                    <input type="text" id="obs-input-text" data-role="obs-input-text" placeholder="Or type channel name manually" class="mt-1">
                   </div>
 
-                  <div id="param-obs-source" class="form-group obs-param hidden">
+                  <div id="param-obs-volume" class="form-group obs-param hidden" data-role="param-obs-volume">
+                    <label for="obs-volume-input-select">Audio Input</label>
+                    <select id="obs-volume-input-select" data-role="obs-volume-input-select"></select>
+                    <input type="text" id="obs-volume-input-text" data-role="obs-volume-input-text" placeholder="Or type channel name manually" class="mt-1">
+                    <label for="obs-volume-value" class="mt-1" style="display:flex;align-items:center;justify-content:space-between;">
+                      Volume<span id="obs-volume-value-label" data-role="obs-volume-value-label" style="font-size:0.72rem;color:var(--text-dim);font-weight:400;">50%</span>
+                    </label>
+                    <input type="range" id="obs-volume-value" data-role="obs-volume-value" min="0" max="100" step="1" value="50">
+                    <div class="icon-help">On a Knob pad, dragging sets this live instead of using the slider above.</div>
+                  </div>
+
+                  <div id="param-obs-source" class="form-group obs-param hidden" data-role="param-obs-source">
                     <label for="obs-source-scene-select">Select Scene</label>
-                    <select id="obs-source-scene-select"></select>
-                    <input type="text" id="obs-source-scene-text" placeholder="Scene name (Optional / Auto-detect)" class="mt-1">
+                    <select id="obs-source-scene-select" data-role="obs-source-scene-select"></select>
+                    <input type="text" id="obs-source-scene-text" data-role="obs-source-scene-text" placeholder="Scene name (Optional / Auto-detect)" class="mt-1">
                     <label for="obs-source-name-select" class="mt-1">Select Source</label>
-                    <select id="obs-source-name-select"></select>
-                    <input type="text" id="obs-source-name-text" placeholder="Or source name manually" class="mt-1">
+                    <select id="obs-source-name-select" data-role="obs-source-name-select"></select>
+                    <input type="text" id="obs-source-name-text" data-role="obs-source-name-text" placeholder="Or source name manually" class="mt-1">
                   </div>
 
-                  <div id="param-obs-custom" class="form-group obs-param hidden">
+                  <div id="param-obs-custom" class="form-group obs-param hidden" data-role="param-obs-custom">
                     <label for="obs-custom-request">Request Type</label>
-                    <input type="text" id="obs-custom-request" placeholder="e.g. TriggerHotkeyByName">
+                    <input type="text" id="obs-custom-request" data-role="obs-custom-request" placeholder="e.g. TriggerHotkeyByName">
                     <label for="obs-custom-params" class="mt-1">Parameters (JSON)</label>
-                    <textarea id="obs-custom-params" rows="3" placeholder='{"hotkeyName": "my_hotkey"}'></textarea>
+                    <textarea id="obs-custom-params" data-role="obs-custom-params" rows="3" placeholder='{"hotkeyName": "my_hotkey"}'></textarea>
                   </div>
                 </div>
 
                 <!-- System Action Fields -->
-                <div id="fields-system" class="action-fields hidden">
+                <div id="fields-system" class="action-fields hidden" data-role="fields-system">
                   <div class="form-group">
                     <label for="system-cmd">Terminal / PowerShell Command</label>
-                    <textarea id="system-cmd" rows="3" placeholder="e.g. start chrome, or a PowerShell script for media keys"></textarea>
+                    <textarea id="system-cmd" data-role="system-cmd" rows="3" placeholder="e.g. start chrome, or a PowerShell script for media keys"></textarea>
                     <div class="icon-help">Executed by the server on this PC.</div>
                   </div>
                 </div>
 
                 <!-- Navigation Action Fields -->
-                <div id="fields-nav" class="action-fields hidden">
+                <div id="fields-nav" class="action-fields hidden" data-role="fields-nav">
                   <div class="form-group">
                     <label for="nav-target-profile">Target Profile</label>
-                    <select id="nav-target-profile"></select>
+                    <select id="nav-target-profile" data-role="nav-target-profile"></select>
                   </div>
                 </div>
 
                 <!-- Sound Action Fields -->
-                <div id="fields-sound" class="action-fields hidden">
+                <div id="fields-sound" class="action-fields hidden" data-role="fields-sound">
                   <div class="form-group">
                     <label for="sound-select">Select Sound</label>
-                    <select id="sound-select"></select>
+                    <select id="sound-select" data-role="sound-select"></select>
                   </div>
                 </div>
 
                 <!-- Clipboard Action Fields -->
-                <div id="fields-clipboard" class="action-fields hidden">
+                <div id="fields-clipboard" class="action-fields hidden" data-role="fields-clipboard">
                   <div class="form-group">
                     <label for="clipboard-text">Text to Copy</label>
-                    <textarea id="clipboard-text" rows="3" placeholder="e.g. !command, GG WP, stream link..."></textarea>
+                    <textarea id="clipboard-text" data-role="clipboard-text" rows="3" placeholder="e.g. !command, GG WP, stream link..."></textarea>
                     <div class="icon-help">Copied to clipboard when the button is pressed.</div>
                   </div>
                 </div>
 
                 <!-- Twitch Chat Action Fields -->
-                <div id="fields-twitch-chat" class="action-fields hidden">
+                <div id="fields-twitch-chat" class="action-fields hidden" data-role="fields-twitch-chat">
                   <div class="form-group">
                     <label for="twitch-chat-message">Chat Message</label>
-                    <textarea id="twitch-chat-message" rows="2" placeholder="e.g. PogChamp Hyped! !clipit !song"></textarea>
+                    <textarea id="twitch-chat-message" data-role="twitch-chat-message" rows="2" placeholder="e.g. PogChamp Hyped! !clipit !song"></textarea>
                   </div>
                   <div class="form-group">
                     <label for="twitch-chat-interval" style="display:flex;align-items:center;justify-content:space-between;">
                       Repeat every X seconds
                       <span style="font-size:0.72rem;color:var(--text-dim);font-weight:400;">(0 = manual only)</span>
                     </label>
-                    <input type="number" id="twitch-chat-interval" min="0" step="1" value="0" placeholder="0 (disabled)">
+                    <input type="number" id="twitch-chat-interval" data-role="twitch-chat-interval" min="0" step="1" value="0" placeholder="0 (disabled)">
                     <div class="icon-help">
                       Press once to send. With interval &gt; 0, activates an auto-timer — press again to cancel.
                     </div>
@@ -339,6 +390,52 @@
                   <div id="twitch-irc-disconnected-bar" style="display:none;padding:0.4rem 0.6rem;border-radius:8px;font-size:0.75rem;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#f87171;margin-top:0.2rem;gap:0.4rem;align-items:center;">
                     <i data-lucide="alert-circle" style="width:12px;height:12px;"></i> Chat disconnected — set OAuth Token in Config
                   </div>
+                </div>
+
+                <!-- Spotify Volume Action Fields -->
+                <div id="fields-spotify-volume" class="action-fields hidden" data-role="fields-spotify-volume">
+                  <div class="form-group">
+                    <label for="spotify-volume-value" style="display:flex;align-items:center;justify-content:space-between;">
+                      Volume<span id="spotify-volume-value-label" data-role="spotify-volume-value-label" style="font-size:0.72rem;color:var(--text-dim);font-weight:400;">50%</span>
+                    </label>
+                    <input type="range" id="spotify-volume-value" data-role="spotify-volume-value" min="0" max="100" step="1" value="50">
+                    <div class="icon-help">On a Knob pad, dragging sets this live instead of using the slider above.</div>
+                  </div>
+                </div>
+
+                <!-- Open URL Action Fields -->
+                <div id="fields-url" class="action-fields hidden" data-role="fields-url">
+                  <div class="form-group">
+                    <label for="url-action-value">URL</label>
+                    <input type="text" id="url-action-value" data-role="url-action-value" placeholder="https://...">
+                    <div class="icon-help">Opens in the default browser on this PC.</div>
+                  </div>
+                </div>
+
+                <!-- Webhook Action Fields -->
+                <div id="fields-webhook" class="action-fields hidden" data-role="fields-webhook">
+                  <div class="form-group">
+                    <label for="webhook-url">URL</label>
+                    <input type="text" id="webhook-url" data-role="webhook-url" placeholder="https://discord.com/api/webhooks/...">
+                  </div>
+                  <div class="form-group">
+                    <label for="webhook-method">Method</label>
+                    <select id="webhook-method" data-role="webhook-method">
+                      <option value="GET">GET</option>
+                      <option value="POST">POST</option>
+                    </select>
+                  </div>
+                  <div class="form-group" id="webhook-body-group" data-role="webhook-body-group">
+                    <label for="webhook-body">Body (JSON, optional)</label>
+                    <textarea id="webhook-body" data-role="webhook-body" rows="3" placeholder='{"content": "Going live!"}'></textarea>
+                  </div>
+                </div>
+                </div>
+
+                <!-- SWITCH: two independent commands (ON / OFF), populated at runtime by cloning #primary-action-editor -->
+                <div id="switch-actions-container" class="hidden">
+                  <div id="switch-on-action-editor"></div>
+                  <div id="switch-off-action-editor" style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border-glass);"></div>
                 </div>
 
                 <!-- Macro Action Fields -->
@@ -354,6 +451,10 @@
 
                 <div class="editor-buttons">
                   <button type="button" id="btn-save-action" class="primary-btn">Save Changes</button>
+                  <div style="display:flex; gap:0.6rem;">
+                    <button type="button" id="btn-copy-action" class="glass-input" style="flex:1; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:0.4rem;" title="Copy this button as a shareable preset"><i data-lucide="copy"></i> Copy</button>
+                    <button type="button" id="btn-paste-action" class="glass-input" style="flex:1; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:0.4rem;" title="Paste a button preset here"><i data-lucide="clipboard-paste"></i> Paste</button>
+                  </div>
                   <button type="button" id="btn-clear-action" class="danger-btn">Clear Button</button>
                 </div>
               </form>
@@ -467,6 +568,7 @@
                 <span>Drag or click to <strong style="color:var(--neon-cyan);">Add New Sound</strong></span>
                 <input type="file" id="sound-file-input" accept="audio/*" style="display:none;">
               </div>
+              <div id="sound-upload-progress" class="upload-progress-bar hidden"><div class="upload-progress-fill"></div></div>
             </div>
             <div class="card-body" style="padding: 1.5rem;">
               <div id="soundboard-unified-grid" class="sound-section-grid"></div>
@@ -488,10 +590,57 @@
       <section id="tab-overlays" class="tab-content">
         <div class="config-scroll-container">
 
+          <!-- Mini Support / Coffee widget (Clean & Collapsible) -->
+          <div class="cfg-support-widget glass">
+            <button class="support-toggle-btn" onclick="document.getElementById('support-qr-panel').classList.toggle('hidden'); this.classList.toggle('active');">
+              <i data-lucide="coffee"></i>
+              <span>Support the project</span>
+              <i data-lucide="chevron-down" class="support-chevron"></i>
+            </button>
+            <div id="support-qr-panel" class="support-qr-panel hidden">
+              <div class="support-content">
+                <img src="/paypal-qr.png" alt="Donate via PayPal" class="support-qr-image">
+                <div class="support-text">
+                  <h4>Support sDeck!</h4>
+                  <p>If you like this project, consider buying me a coffee or donating to keep it alive. Thank you! ❤️</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ============================================================ -->
+          <!-- DEVICE PAIRING                                                -->
+          <!-- ============================================================ -->
+          <details class="cfg-section" id="cfg-sec-pairing">
+            <summary class="cfg-section-header">
+              <div class="cfg-section-title-group">
+                <i data-lucide="smartphone-nfc"></i>
+                <span>Device Pairing</span>
+              </div>
+              <div class="cfg-section-right">
+                <span class="cfg-section-desc">PIN required for phones/tablets on Wi-Fi</span>
+                <i data-lucide="chevron-down" class="cfg-chevron"></i>
+              </div>
+            </summary>
+            <div class="cfg-section-body">
+              <div class="card glass" style="padding:1.25rem;">
+                <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.5; margin-bottom:1rem;">
+                  This PC never needs a PIN. Any other phone, tablet or browser joining over Wi-Fi must enter this PIN once before it can control your deck.
+                </p>
+                <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                  <div id="pairing-pin-display" class="glass-input" style="flex:1; min-width:140px; text-align:center; font-size:1.4rem; font-weight:800; letter-spacing:0.2em; padding:0.6rem;">------</div>
+                  <button id="btn-regenerate-pin" type="button" class="danger-btn" style="padding:0.6rem 1rem;">
+                    <i data-lucide="refresh-cw"></i> New PIN
+                  </button>
+                </div>
+              </div>
+            </div>
+          </details>
+
           <!-- ============================================================ -->
           <!-- CREDENTIALS & CONNECTIONS                                     -->
           <!-- ============================================================ -->
-          <details class="cfg-section" id="cfg-sec-credentials" open>
+          <details class="cfg-section" id="cfg-sec-credentials">
             <summary class="cfg-section-header">
               <div class="cfg-section-title-group">
                 <i data-lucide="key"></i>
@@ -636,8 +785,8 @@
                           <ol style="margin-left:1.2rem; margin-top:0.25rem; display:flex; flex-direction:column; gap:0.25rem;">
                             <li>Go to the <a href="https://developer.spotify.com/dashboard" target="_blank" style="color:var(--neon-cyan); text-decoration:none;">Spotify Developer Dashboard ↗</a> and create a Web API app.</li>
                             <li>In the app settings, add this exact URL in the <strong>Redirect URIs</strong> field:
-                              <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.2rem;">
-                                <code id="spotify-redirect-uri-text" style="background:rgba(0,0,0,0.3); padding:0.2rem 0.4rem; border-radius:4px; font-size:0.72rem; color:#22c55e;">http://localhost:3000/callback</code>
+                              <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.2rem; flex-wrap:wrap;">
+                                <code id="spotify-redirect-uri-text" style="background:rgba(0,0,0,0.3); padding:0.2rem 0.4rem; border-radius:4px; font-size:0.72rem; color:#22c55e; word-break:break-all; overflow-wrap:anywhere;">http://localhost:3000/callback</code>
                                 <button id="btn-copy-redirect-uri" type="button" class="primary-btn" style="font-size:0.65rem; padding:0.1rem 0.35rem; border-radius:4px;" title="Copy URI">Copy</button>
                               </div>
                             </li>
@@ -1026,12 +1175,52 @@
     </main>
   </div>
 
+  <!-- Modal: Generic Confirmation (replaces browser confirm() dialogs) -->
+  <div id="confirm-modal" class="modal-overlay hidden" style="z-index: 270;">
+    <div class="modal-card" style="max-width: 380px; width: 90%;">
+      <div class="modal-header">
+        <h3><i data-lucide="alert-triangle" style="color:var(--danger,#ef4444);"></i> Please Confirm</h3>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-modal-message" style="font-size:0.9rem; color:var(--text-muted); line-height:1.5; margin-bottom:1.25rem;"></p>
+        <div style="display:flex; gap:0.75rem;">
+          <button type="button" id="confirm-modal-cancel" class="glass-input" style="flex:1; cursor:pointer; font-weight:600; color:var(--text-main);">Cancel</button>
+          <button type="button" id="confirm-modal-ok" class="danger-btn" style="flex:1;">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Device Pairing (blocks usage from non-local devices until a PIN is entered) -->
+  <div id="pairing-modal" class="modal-overlay hidden" style="z-index: 260;">
+    <div class="modal-card" style="max-width: 380px; width: 90%;">
+      <div class="modal-header">
+        <h3><i data-lucide="smartphone-nfc" style="color:var(--neon-cyan);"></i> Pair This Device</h3>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.5; margin-bottom:1rem;">
+          Enter the pairing PIN shown on the host PC's Config tab (Device Pairing section) to control this deck from here.
+        </p>
+        <form id="pairing-form" onsubmit="event.preventDefault();">
+          <div class="form-group">
+            <label for="pairing-pin-input">Pairing PIN</label>
+            <input type="text" id="pairing-pin-input" class="glass-input" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="off">
+          </div>
+          <div style="margin-top: 1.25rem;">
+            <button type="submit" id="btn-pairing-submit" class="primary-btn" style="width: 100%;">Connect</button>
+          </div>
+          <p id="pairing-error" class="hidden" style="color:var(--danger,#ef4444); font-size:0.8rem; margin-top:0.75rem;">Incorrect PIN. Please try again.</p>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Profile Settings -->
   <div id="profile-management-modal" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-header">
         <h3><i data-lucide="settings" style="color:var(--neon-cyan);"></i> Profile Settings</h3>
-        <button id="profile-modal-close" class="close-btn" style="background:none;border:none;color:var(--text-muted);font-size:1.5rem;cursor:pointer;">&times;</button>
+        <button id="profile-modal-close" class="close-btn" style="background:none;border:none;color:var(--text-muted);font-size:1.5rem;cursor:pointer;" aria-label="Close">&times;</button>
       </div>
       <div class="modal-body">
         <form id="profile-settings-form" onsubmit="event.preventDefault();">
@@ -1074,7 +1263,7 @@
     <div class="modal-card" style="max-width: 580px; width: 90%; background: var(--bg-card); border: 1.5px solid var(--border-glass-focus); box-shadow: 0 20px 50px rgba(0,0,0,0.8);">
       
       <!-- Wizard Progress Indicators -->
-      <div class="wizard-progress-bar" style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 1.5rem 0.5rem; border-bottom: 1px solid var(--border-glass); margin-bottom: 1rem;">
+      <div class="wizard-progress-bar" style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 1.5rem 0.5rem; border-bottom: 1px solid var(--border-glass); margin-bottom: 1rem; flex-shrink: 0;">
         <div class="wizard-step-indicator active" data-step="1" style="flex: 1; text-align: center; font-size: 0.72rem; font-weight: 700; color: var(--neon-cyan); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 3px solid var(--neon-cyan); padding-bottom: 0.5rem; transition: all 0.3s;">1. Welcome</div>
         <div class="wizard-step-indicator" data-step="2" style="flex: 1; text-align: center; font-size: 0.72rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 3px solid transparent; padding-bottom: 0.5rem; transition: all 0.3s;">2. OBS</div>
         <div class="wizard-step-indicator" data-step="3" style="flex: 1; text-align: center; font-size: 0.72rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 3px solid transparent; padding-bottom: 0.5rem; transition: all 0.3s;">3. Twitch</div>
@@ -1083,7 +1272,7 @@
       </div>
 
       <!-- Wizard Body Content -->
-      <div class="modal-body" style="padding: 1.5rem; min-height: 320px; display: flex; flex-direction: column; justify-content: space-between;">
+      <div class="modal-body" style="padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between;">
         
         <!-- Step 1: Welcome -->
         <div class="wizard-step-content" id="wstep-1">
@@ -1173,8 +1362,8 @@
             <ol style="margin-left: 1.1rem; margin-top: 0.2rem;">
               <li>Create an app in the Spotify developer console.</li>
               <li>Add this Redirect URI in settings:
-                <div style="display:flex; align-items:center; gap:0.4rem; margin-top:0.15rem;">
-                  <code id="wiz-spotify-redirect-uri" style="background:rgba(0,0,0,0.3); padding:0.1rem 0.3rem; border-radius:4px; font-size:0.7rem; color:#22c55e;">http://localhost:3000/callback</code>
+                <div style="display:flex; align-items:center; gap:0.4rem; margin-top:0.15rem; flex-wrap:wrap;">
+                  <code id="wiz-spotify-redirect-uri" style="background:rgba(0,0,0,0.3); padding:0.1rem 0.3rem; border-radius:4px; font-size:0.7rem; color:#22c55e; word-break:break-all; overflow-wrap:anywhere;">http://localhost:3000/callback</code>
                   <button id="wiz-btn-copy-uri" type="button" class="primary-btn" style="font-size:0.6rem; padding:0.05rem 0.25rem; border-radius:4px;">Copy</button>
                 </div>
               </li>
@@ -1238,7 +1427,7 @@
   </div>
 
   <!-- Notification Toast -->
-  <div id="toast-notification" class="toast-notification hidden">
+  <div id="toast-notification" class="toast-notification hidden" role="status" aria-live="polite">
     <div id="toast-message">Notification</div>
   </div>
 

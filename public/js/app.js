@@ -4,12 +4,29 @@ let currentProfileId = '';
 let profiles = {};
 let settings = {};
 let spotifyUser = null;
-let state = {};
 let editMode = false;
 let selectedButtonCell = null; // { type: 'grid'|'fav', row, col, index }
 let macroSteps = []; // live macro steps being edited
 let activeChatTimers = new Map(); // key: "row_col", value: intervalId
 let twitchIrcConnected = false;
+
+// -------------------------------------------------------------
+// DEVICE PAIRING (PIN required for any non-local device)
+// -------------------------------------------------------------
+const PIN_STORAGE_KEY = 'sdeck_pairing_pin';
+function getStoredPin() { return localStorage.getItem(PIN_STORAGE_KEY) || ''; }
+function setStoredPin(pin) { localStorage.setItem(PIN_STORAGE_KEY, pin); }
+
+// Every fetch() call to our own API gets the stored pairing PIN attached.
+// The host machine ignores it (it's always trusted); other devices need it.
+const _nativeFetch = window.fetch.bind(window);
+window.fetch = (input, init = {}) => {
+  const pin = getStoredPin();
+  if (pin) {
+    init = { ...init, headers: { ...(init.headers || {}), 'X-SDeck-Pin': pin } };
+  }
+  return _nativeFetch(input, init);
+};
 
 // Custom SVG Brand Icons with transparent background and currentColor fill
 const customIcons = {
@@ -75,6 +92,8 @@ const elBtnImagePreviewContainer = document.getElementById('btn-image-preview-co
 const elBtnImagePreview = document.getElementById('btn-image-preview');
 const elBtnRemoveImage = document.getElementById('btn-remove-image');
 const elBtnImageUrl = document.getElementById('btn-image-url');
+const elBtnImageUploadProgress = document.getElementById('btn-image-upload-progress');
+const elSoundUploadProgress = document.getElementById('sound-upload-progress');
 
 const elBtnActionType = document.getElementById('btn-action-type');
 let activeDragSource = null;
@@ -94,12 +113,36 @@ const elObsInputText = document.getElementById('obs-input-text');
 const elParamObsCustom = document.getElementById('param-obs-custom');
 const elObsCustomRequest = document.getElementById('obs-custom-request');
 const elObsCustomParams = document.getElementById('obs-custom-params');
+const elParamObsVolume = document.getElementById('param-obs-volume');
+const elObsVolumeInputSelect = document.getElementById('obs-volume-input-select');
+const elObsVolumeInputText = document.getElementById('obs-volume-input-text');
+const elObsVolumeValue = document.getElementById('obs-volume-value');
+const elObsVolumeValueLabel = document.getElementById('obs-volume-value-label');
 
 const elSystemCmd = document.getElementById('system-cmd');
 const elNavTargetProfile = document.getElementById('nav-target-profile');
 
+const elFieldsSpotifyVolume = document.getElementById('fields-spotify-volume');
+const elSpotifyVolumeValue = document.getElementById('spotify-volume-value');
+const elSpotifyVolumeValueLabel = document.getElementById('spotify-volume-value-label');
+const elFieldsUrl = document.getElementById('fields-url');
+const elUrlActionValue = document.getElementById('url-action-value');
+const elFieldsWebhook = document.getElementById('fields-webhook');
+const elWebhookUrl = document.getElementById('webhook-url');
+const elWebhookMethod = document.getElementById('webhook-method');
+const elWebhookBody = document.getElementById('webhook-body');
+const elWebhookBodyGroup = document.getElementById('webhook-body-group');
+
+const elWidgetTypeTabs = document.getElementById('widget-type-tabs');
+const elWidgetKnobHint = document.getElementById('widget-knob-hint');
+const elWidgetSwitchHint = document.getElementById('widget-switch-hint');
+const elPrimaryActionEditor = document.getElementById('primary-action-editor');
+const elSwitchActionsContainer = document.getElementById('switch-actions-container');
+
 const elSaveActionBtn = document.getElementById('btn-save-action');
 const elClearActionBtn = document.getElementById('btn-clear-action');
+const elCopyActionBtn = document.getElementById('btn-copy-action');
+const elPasteActionBtn = document.getElementById('btn-paste-action');
 
 // Overlays & Settings Tabs Elements
 const elSpotifyStatusText = document.getElementById('spotify-status-text');
@@ -187,6 +230,55 @@ const elSoundUploadZone = document.getElementById('sound-upload-zone');
 const elSoundFileInput = document.getElementById('sound-file-input');
 const elSoundboardUnifiedGrid = document.getElementById('soundboard-unified-grid');
 const elSoundSelect = document.getElementById('sound-select');
+
+// Generic Confirm Modal Elements
+const elConfirmModal = document.getElementById('confirm-modal');
+const elConfirmModalMessage = document.getElementById('confirm-modal-message');
+const elConfirmModalOk = document.getElementById('confirm-modal-ok');
+const elConfirmModalCancel = document.getElementById('confirm-modal-cancel');
+
+// Promise-based replacement for window.confirm(), styled to match the rest
+// of the UI instead of the browser's native dialog.
+function confirmDialog(message) {
+  return new Promise((resolve) => {
+    elConfirmModalMessage.textContent = message;
+    elConfirmModal.classList.remove('hidden');
+    elConfirmModalCancel.focus();
+
+    const cleanup = (result) => {
+      elConfirmModal.classList.add('hidden');
+      elConfirmModalOk.removeEventListener('click', onOk);
+      elConfirmModalCancel.removeEventListener('click', onCancel);
+      resolve(result);
+    };
+    const onOk = () => cleanup(true);
+    const onCancel = () => cleanup(false);
+
+    elConfirmModalOk.addEventListener('click', onOk);
+    elConfirmModalCancel.addEventListener('click', onCancel);
+  });
+}
+
+// Escape closes the dismissible modals (confirm dialog, profile settings).
+// The pairing gate and setup wizard are intentionally excluded — they're
+// blocking flows with their own explicit exit points (Cancel/Skip), not
+// incidental overlays a stray Escape press should bypass.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (!elConfirmModal.classList.contains('hidden')) {
+    elConfirmModalCancel.click();
+  } else if (!elProfileModal.classList.contains('hidden')) {
+    elProfileModal.classList.add('hidden');
+  }
+});
+
+// Device Pairing Elements
+const elPairingModal = document.getElementById('pairing-modal');
+const elPairingForm = document.getElementById('pairing-form');
+const elPairingPinInput = document.getElementById('pairing-pin-input');
+const elPairingError = document.getElementById('pairing-error');
+const elPairingPinDisplay = document.getElementById('pairing-pin-display');
+const elBtnRegeneratePin = document.getElementById('btn-regenerate-pin');
 
 // Profile Settings Modal Elements
 const elBtnManageProfiles = document.getElementById('btn-manage-profiles');
@@ -415,7 +507,7 @@ if (elImportProfilesInput) {
       const text = await file.text();
       const data = JSON.parse(text);
       if (!data.profiles) throw new Error('Invalid file: missing "profiles"');
-      if (!confirm(`Import ${Object.keys(data.profiles).length} profile(s)? Current profiles will be replaced.`)) return;
+      if (!(await confirmDialog(`Import ${Object.keys(data.profiles).length} profile(s)? Current profiles will be replaced.`))) return;
       profiles = data.profiles;
       if (data.activeProfile && profiles[data.activeProfile]) {
         currentProfileId = data.activeProfile;
@@ -444,7 +536,7 @@ function executeTwitchChatAction(btnData) {
 
   // If already has active timer, cancel it (toggle off)
   if (activeChatTimers.has(key)) {
-    clearInterval(activeChatTimers.get(key));
+    clearInterval(activeChatTimers.get(key).intervalId);
     activeChatTimers.delete(key);
     showToast('Chat timer cancelled.');
     renderGrid();
@@ -456,14 +548,30 @@ function executeTwitchChatAction(btnData) {
   showToast(`Sent to chat: "${message.length > 40 ? message.slice(0,40)+'…' : message}"`);
 
   if (interval > 0) {
+    const periodMs = interval * 1000;
     const id = setInterval(() => {
       sendMessage({ type: 'send_chat_message', message });
-    }, interval * 1000);
-    activeChatTimers.set(key, id);
+      const timer = activeChatTimers.get(key);
+      if (timer) timer.nextFireAt = Date.now() + periodMs;
+    }, periodMs);
+    activeChatTimers.set(key, { intervalId: id, nextFireAt: Date.now() + periodMs });
     showToast(`Timer active: every ${interval}s — press again to cancel.`);
     renderGrid();
   }
 }
+
+// Ticks once a second so any visible chat-timer badge shows live time
+// remaining until its next auto-message, without re-rendering the grid.
+setInterval(() => {
+  activeChatTimers.forEach((timer, key) => {
+    const remaining = Math.max(0, Math.ceil((timer.nextFireAt - Date.now()) / 1000));
+    const mm = String(Math.floor(remaining / 60)).padStart(2, '0');
+    const ss = String(remaining % 60).padStart(2, '0');
+    document.querySelectorAll(`[data-timer-key="${key}"]`).forEach(badge => {
+      badge.textContent = `${mm}:${ss}`;
+    });
+  });
+}, 1000);
 
 function updateTwitchIrcBars() {
   if (elTwitchIrcConnectedBar) elTwitchIrcConnectedBar.style.display = twitchIrcConnected ? 'flex' : 'none';
@@ -473,7 +581,7 @@ function updateTwitchIrcBars() {
 
   if (elTwitchIrcStatusText) {
     if (twitchIrcConnected) {
-      elTwitchIrcStatusText.textContent = `Conectado como: ${user || 'Utilizador'}`;
+      elTwitchIrcStatusText.textContent = `Connected as: ${user || 'User'}`;
       elTwitchIrcStatusText.style.background = 'rgba(16,185,129,0.1)';
       elTwitchIrcStatusText.style.border = '1px solid rgba(16,185,129,0.25)';
       elTwitchIrcStatusText.style.color = '#34d399';
@@ -497,7 +605,7 @@ function updateTwitchIrcBars() {
       elTwitchIrcCfgStatus.style.background = 'rgba(16,185,129,0.1)';
       elTwitchIrcCfgStatus.style.border = '1px solid rgba(16,185,129,0.25)';
       elTwitchIrcCfgStatus.style.color = '#34d399';
-      elTwitchIrcCfgStatus.textContent = '✓ Chat Twitch conectado';
+      elTwitchIrcCfgStatus.textContent = '✓ Twitch Chat connected';
     } else {
       elTwitchIrcCfgStatus.style.background = 'rgba(239,68,68,0.1)';
       elTwitchIrcCfgStatus.style.border = '1px solid rgba(239,68,68,0.25)';
@@ -639,16 +747,11 @@ function renderMacroStepParams(idx, container) {
     const soundSel = document.createElement('select');
     soundSel.className = 'glass-input';
     soundSel.innerHTML = '<option value="">-- Select sound --</option>';
-    const synths = ['airhorn','siren','coin','laser','boom','success'];
-    synths.forEach(s => {
-      const o = document.createElement('option');
-      o.value = s; o.textContent = `Synth: ${s}`;
-      if (step.data?.file === s) o.selected = true;
-      soundSel.appendChild(o);
-    });
+    // customSounds (from /api/soundboard/sounds) already covers every synth
+    // and uploaded file — no need for a second, easily-stale hardcoded list.
     customSounds.forEach(s => {
       const o = document.createElement('option');
-      o.value = s.id; o.textContent = s.name;
+      o.value = s.id; o.textContent = s.isSynth ? `Synth: ${s.name}` : s.name;
       if (step.data?.file === s.id) o.selected = true;
       soundSel.appendChild(o);
     });
@@ -706,12 +809,62 @@ document.querySelectorAll('.app-tabs .tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.app-tabs .tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    
+
     document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
     const targetId = btn.getAttribute('data-tab');
     document.getElementById(targetId).classList.add('active');
+    document.body.classList.toggle('deck-tab-active', targetId === 'tab-deck');
   });
 });
+// tab-deck is the tab marked active in the markup, so mirror that on load.
+document.body.classList.add('deck-tab-active');
+
+// -------------------------------------------------------------
+// AUTO-HIDE HEADER (deck-mode only) — hides the top header while actively
+// using the deck (not editing, not on another tab) so pads have more room.
+// Hovering the very top edge of the screen peeks it back into view.
+// -------------------------------------------------------------
+const elAutoHideHeaderCheckbox = document.getElementById('auto-hide-header-checkbox');
+const elHeaderHoverZone = document.getElementById('header-hover-zone');
+const elAppHeader = document.querySelector('.app-header');
+const AUTO_HIDE_HEADER_KEY = 'sdeck_auto_hide_header';
+let autoHideHeader = localStorage.getItem(AUTO_HIDE_HEADER_KEY) === 'true';
+
+function applyAutoHideHeader() {
+  document.body.classList.toggle('auto-hide-header', autoHideHeader);
+}
+applyAutoHideHeader();
+
+if (elAutoHideHeaderCheckbox) {
+  elAutoHideHeaderCheckbox.checked = autoHideHeader;
+  elAutoHideHeaderCheckbox.addEventListener('change', () => {
+    autoHideHeader = elAutoHideHeaderCheckbox.checked;
+    localStorage.setItem(AUTO_HIDE_HEADER_KEY, autoHideHeader ? 'true' : 'false');
+    applyAutoHideHeader();
+  });
+}
+
+let headerPeekTimer = null;
+function peekHeader() {
+  clearTimeout(headerPeekTimer);
+  document.body.classList.add('header-peek');
+}
+function schedulePeekEnd() {
+  clearTimeout(headerPeekTimer);
+  headerPeekTimer = setTimeout(() => document.body.classList.remove('header-peek'), 500);
+}
+elHeaderHoverZone?.addEventListener('mouseenter', peekHeader);
+elHeaderHoverZone?.addEventListener('mouseleave', schedulePeekEnd);
+elAppHeader?.addEventListener('mouseenter', peekHeader);
+elAppHeader?.addEventListener('mouseleave', schedulePeekEnd);
+
+// Touch devices have no hover — tapping the hover-zone strip peeks the
+// header the same way hovering it does on desktop, then auto-hides again.
+elHeaderHoverZone?.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  peekHeader();
+  schedulePeekEnd();
+}, { passive: false });
 
 // -------------------------------------------------------------
 // WEBSOCKET LOGIC
@@ -724,9 +877,10 @@ function sendMessage(obj) {
 // -------------------------------------------------------------
 function connectWebSocket() {
   const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${wsProtocol}//${window.location.host}`;
-  
-  console.log(`Connecting to WebSocket server at ${wsUrl}...`);
+  const pin = getStoredPin();
+  const wsUrl = `${wsProtocol}//${window.location.host}${pin ? `?pin=${encodeURIComponent(pin)}` : ''}`;
+
+  console.log(`Connecting to WebSocket server...`);
   socket = new WebSocket(wsUrl);
 
   socket.onopen = () => {
@@ -770,6 +924,7 @@ function connectWebSocket() {
         populateSpotifyForm();
         populateStreamlabsForm();
         populateTwitchSettingsForm();
+        loadPairingPin();
 
         // Render sections
         renderProfilesTabs();
@@ -889,13 +1044,20 @@ function connectWebSocket() {
     }
   };
 
-  socket.onclose = () => {
-    console.log('WebSocket connection closed. Retrying in 3s...');
+  socket.onclose = (event) => {
     elServerStatus.classList.remove('connected');
     elServerStatus.classList.add('disconnected');
     elObsStatus.classList.remove('connected');
     elObsStatus.classList.add('disconnected');
     obsConnected = false;
+
+    if (event.code === 4001) {
+      console.log('WebSocket closed: pairing PIN required.');
+      showPairingModal(!!getStoredPin());
+      return; // wait for the user to submit a PIN instead of retrying blindly
+    }
+
+    console.log('WebSocket connection closed. Retrying in 3s...');
     setTimeout(connectWebSocket, 3000);
   };
 }
@@ -926,7 +1088,7 @@ function populateSpotifyForm() {
     
     if (elSpotifyStatusText) {
       if (isConnected) {
-        elSpotifyStatusText.textContent = 'Conectado';
+        elSpotifyStatusText.textContent = 'Connected';
         elSpotifyStatusText.style.background = 'rgba(16,185,129,0.1)';
         elSpotifyStatusText.style.border = '1px solid rgba(16,185,129,0.25)';
         elSpotifyStatusText.style.color = '#34d399';
@@ -980,15 +1142,15 @@ elSpotifySettingsForm.addEventListener('submit', async (e) => {
     });
     const result = await response.json();
     if (result.success) {
-      showToast('Credenciais Spotify gravadas!');
+      showToast('Spotify credentials saved!');
       settings.spotify.client_id = client_id;
       settings.spotify.client_secret = client_secret;
       populateSpotifyForm();
     } else {
-      showToast('Erro ao gravar credenciais.', true);
+      showToast('Error saving credentials.', true);
     }
   } catch (err) {
-    showToast('Erro no pedido.', true);
+    showToast('Request error.', true);
   }
 });
 
@@ -998,7 +1160,7 @@ elBtnSpotifyAuth.addEventListener('click', () => {
 
 if (elBtnSpotifyDisconnect) {
   elBtnSpotifyDisconnect.addEventListener('click', async () => {
-    if (!confirm('Are you sure you want to disconnect Spotify and clear credentials?')) return;
+    if (!(await confirmDialog('Are you sure you want to disconnect Spotify and clear credentials?'))) return;
     try {
       const response = await fetch('/api/spotify/disconnect', { method: 'POST' });
       const result = await response.json();
@@ -1441,6 +1603,10 @@ function renderProfilesTabs() {
       closeEditorDrawer();
       renderProfilesTabs();
       renderGrid();
+      // Keep the server's notion of the active profile in sync immediately,
+      // so any later save_profiles round-trip (e.g. finishing a knob drag)
+      // doesn't echo back a stale profile and snap the view back to it.
+      socket.send(JSON.stringify({ type: 'save_profiles', profiles, activeProfile: pId }));
     });
     elProfilesTabs.appendChild(btn);
   });
@@ -1478,6 +1644,8 @@ function renderGrid() {
 
       if (btnData) {
         btn.classList.add('has-action');
+        if (btnData.widgetType === 'switch') btn.classList.add('widget-switch');
+        else if (btnData.widgetType === 'knob') btn.classList.add('widget-knob');
 
         const colSpan = Math.min(btnData.colSpan || 1, cols - c);
         const rowSpan = Math.min(btnData.rowSpan || 1, rows - r);
@@ -1512,7 +1680,17 @@ function renderGrid() {
         btn.style.setProperty('--btn-glow-color', glowColor);
         btn.style.setProperty('--btn-glow-color-glow', `${glowColor}66`);
 
-        if (btnData.image) {
+        if (btnData.widgetType === 'knob') {
+          const value = btnData.actionData?.value ?? 50;
+          btn.style.setProperty('--knob-percent', value);
+          const dial = document.createElement('div');
+          dial.className = 'knob-dial';
+          const valueLabel = document.createElement('span');
+          valueLabel.className = 'knob-value-label';
+          valueLabel.textContent = `${Math.round(value)}%`;
+          dial.appendChild(valueLabel);
+          btn.appendChild(dial);
+        } else if (btnData.image) {
           btn.style.backgroundImage = `url(${btnData.image})`;
           btn.classList.add('has-bg-image');
           const overlay = document.createElement('div');
@@ -1531,6 +1709,15 @@ function renderGrid() {
             iconDiv.innerHTML = `<i data-lucide="${btnData.icon}"></i>`;
           }
           btn.appendChild(iconDiv);
+        }
+
+        if (btnData.widgetType === 'switch') {
+          const track = document.createElement('div');
+          track.className = 'switch-track';
+          const thumb = document.createElement('div');
+          thumb.className = 'switch-thumb';
+          track.appendChild(thumb);
+          btn.appendChild(track);
         }
 
         if (btnData.label) {
@@ -1568,6 +1755,12 @@ function renderGrid() {
           } else if (cmd === 'ToggleRecord' && (obsRecordState === 'RECORD_STARTED' || obsRecordState === 'RECORD_PAUSED')) {
             isActionActive = true;
             btn.classList.add('record-pulsing');
+          } else if (cmd === 'ToggleSourceVisibility') {
+            const targetScene = params.sceneName || obsCurrentScene;
+            const item = obsActiveSceneItems.find(i => i.sourceName === params.sourceName);
+            if (targetScene === obsCurrentScene && item) {
+              isActionActive = !!item.enabled;
+            }
           }
         }
 
@@ -1576,6 +1769,11 @@ function renderGrid() {
           const timerKey = `grid_${r}_${c}`;
           if (activeChatTimers.has(timerKey)) {
             btn.classList.add('chat-timer-active');
+            const badge = document.createElement('span');
+            badge.className = 'chat-timer-badge';
+            badge.setAttribute('data-timer-key', timerKey);
+            badge.textContent = '--:--';
+            btn.appendChild(badge);
           }
         }
 
@@ -1583,6 +1781,19 @@ function renderGrid() {
           btn.classList.add('muted');
         } else if (isActionActive) {
           btn.classList.add('active-scene');
+        }
+
+        if (btnData.widgetType === 'switch') {
+          // Legacy switches (no onAction/offAction yet) fall back to the old
+          // OBS-state inference above until they're re-saved with an explicit state.
+          const switchOn = (btnData.onAction || btnData.offAction)
+            ? btnData.switchState === true
+            : (isActionActive && !isMuted);
+          btn.classList.toggle('switch-on', switchOn);
+        }
+
+        if (btnData.widgetType === 'knob' && !editMode) {
+          btn.addEventListener('pointerdown', (e) => handleKnobPointerDown(e, r, c, btnData));
         }
       } else {
         if (editMode) {
@@ -1653,12 +1864,13 @@ function renderGrid() {
           } else {
             delete activeProfile.buttons[sourceCellId];
           }
-          
+
           socket.send(JSON.stringify({
             type: 'save_profiles',
-            profiles: profiles
+            profiles: profiles,
+            activeProfile: currentProfileId
           }));
-          
+
           renderGrid();
         });
       }
@@ -1724,10 +1936,80 @@ function handlePointerDown(e, startRow, startCol, btnData, rows, cols) {
 
     socket.send(JSON.stringify({
       type: 'save_profiles',
-      profiles: profiles
+      profiles: profiles,
+      activeProfile: currentProfileId
     }));
 
     renderGrid();
+  };
+
+  document.addEventListener('pointermove', onPointerMove);
+  document.addEventListener('pointerup', onPointerUp);
+}
+
+// Translates a knob's canonical 0-100 value into whatever the underlying
+// action actually needs. Keeps handleKnobPointerDown action-type-agnostic —
+// adding another knob-compatible action later is a one-line addition here,
+// not a new branch in the drag handler.
+function applyKnobValueToActionData(actionType, actionData, value) {
+  const updated = { ...(actionData || {}), value };
+  if (actionType === 'obs' && updated.command === 'SetInputVolume') {
+    updated.params = { ...(updated.params || {}), inputVolumeMul: value / 100 };
+  }
+  return updated;
+}
+
+// Vertical-drag knob interaction, modeled on handlePointerDown's resize-drag
+// flow above: pointerdown captures the start position, pointermove computes
+// a live value and fires throttled trigger_action messages for real-time
+// feedback, pointerup sends the exact final value and persists it.
+function handleKnobPointerDown(e, row, col, btnData) {
+  e.preventDefault();
+  e.stopPropagation();
+
+  const btn = e.currentTarget;
+  const startY = e.clientY;
+  const startValue = btnData.actionData?.value ?? 50;
+  const DRAG_RANGE_PX = 200;
+  const THROTTLE_MS = 100;
+  let liveValue = startValue;
+  let lastSentAt = 0;
+
+  const sendLiveTrigger = (value) => {
+    sendMessage({
+      type: 'trigger_action',
+      actionType: btnData.actionType,
+      actionData: applyKnobValueToActionData(btnData.actionType, btnData.actionData, value)
+    });
+  };
+
+  const onPointerMove = (moveEv) => {
+    const deltaY = startY - moveEv.clientY;
+    liveValue = Math.max(0, Math.min(100, startValue + (deltaY / DRAG_RANGE_PX) * 100));
+    btn.style.setProperty('--knob-percent', liveValue);
+    const valueLabel = btn.querySelector('.knob-value-label');
+    if (valueLabel) valueLabel.textContent = `${Math.round(liveValue)}%`;
+
+    const now = Date.now();
+    if (now - lastSentAt >= THROTTLE_MS) {
+      lastSentAt = now;
+      sendLiveTrigger(Math.round(liveValue));
+    }
+  };
+
+  const onPointerUp = () => {
+    document.removeEventListener('pointermove', onPointerMove);
+    document.removeEventListener('pointerup', onPointerUp);
+
+    const finalValue = Math.round(liveValue);
+    btnData.actionData = applyKnobValueToActionData(btnData.actionType, btnData.actionData, finalValue);
+    sendLiveTrigger(finalValue);
+
+    socket.send(JSON.stringify({
+      type: 'save_profiles',
+      profiles: profiles,
+      activeProfile: currentProfileId
+    }));
   };
 
   document.addEventListener('pointermove', onPointerMove);
@@ -1766,7 +2048,7 @@ function renderFavorites() {
         `;
       } else {
         const iconName = (favData.icon || 'star').toLowerCase();
-        let iconContent = '';
+        let iconContent;
         if (customIcons[iconName]) {
           iconContent = customIcons[iconName];
         } else {
@@ -1783,6 +2065,18 @@ function renderFavorites() {
         const params = favData.actionData.params || {};
         if (cmd === 'SetCurrentProgramScene' && params.sceneName === obsCurrentScene) {
           slot.classList.add('active-scene');
+        }
+      }
+
+      if (favData.actionType === 'twitch_chat') {
+        const timerKey = `fav_${idx}`;
+        if (activeChatTimers.has(timerKey)) {
+          slot.classList.add('chat-timer-active');
+          const badge = document.createElement('span');
+          badge.className = 'chat-timer-badge';
+          badge.setAttribute('data-timer-key', timerKey);
+          badge.textContent = '--:--';
+          slot.appendChild(badge);
         }
       }
     } else {
@@ -1805,7 +2099,15 @@ function handleButtonClick(row, col, btnData, clickEvent) {
     openEditorDrawer(row, col, btnData);
     renderGrid();
   } else if (btnData) {
+    // Knobs are driven entirely by the drag gesture (handleKnobPointerDown);
+    // the click that fires after a drag's pointerup would otherwise re-send
+    // a stale pre-drag action.
+    if (btnData.widgetType === 'knob') return;
     if (clickEvent) addRipple(clickEvent.currentTarget, clickEvent);
+    if (btnData.widgetType === 'switch') {
+      handleSwitchClick(btnData, `grid_${row}_${col}`);
+      return;
+    }
     executeAction({ ...btnData, _timerKey: `grid_${row}_${col}` });
   }
 }
@@ -1816,8 +2118,37 @@ function handleFavoriteClick(index, favData) {
     openEditorDrawer(-1, -1, favData);
     renderFavorites();
   } else if (favData) {
+    if (favData.widgetType === 'switch') {
+      handleSwitchClick(favData, `fav_${index}`);
+      return;
+    }
     executeAction({ ...favData, _timerKey: `fav_${index}` });
   }
+}
+
+// A switch pad flips its own locally-persisted switchState and fires
+// whichever of its two independent commands (onAction/offAction) matches
+// the new state — mutating btnData in place is safe since it's the same
+// object reference stored in profiles[...].buttons/favorites (see
+// handleKnobPointerDown above for the same established pattern).
+function handleSwitchClick(btnData, timerKey) {
+  if (!btnData.onAction && !btnData.offAction) {
+    // Legacy switch, saved before ON/OFF commands existed — just fire its
+    // single flat action like a regular button until it's re-saved.
+    executeAction({ actionType: btnData.actionType, actionData: btnData.actionData, _timerKey: timerKey });
+    return;
+  }
+
+  const newState = !(btnData.switchState === true);
+  btnData.switchState = newState;
+  const action = newState ? btnData.onAction : btnData.offAction;
+  if (action && action.actionType && action.actionType !== 'none') {
+    executeAction({ ...action, _timerKey: timerKey });
+  }
+
+  socket.send(JSON.stringify({ type: 'save_profiles', profiles, activeProfile: currentProfileId }));
+  renderGrid();
+  renderFavorites();
 }
 
 function executeAction(btnData) {
@@ -1835,6 +2166,8 @@ function executeAction(btnData) {
     executeTwitchChatAction(btnData);
   } else if (btnData.actionType === 'macro') {
     executeMacro(btnData.actionData?.steps || []);
+  } else if (btnData.actionType === 'spotify_volume') {
+    controlSpotify('volume', btnData.actionData?.value ?? 50);
   } else {
     socket.send(JSON.stringify({
       type: 'trigger_action',
@@ -1892,6 +2225,18 @@ function openEditorDrawer(row, col, btnData) {
     elBtnGlowColorText.value = btnData.glowColor || btnData.color || '#3b82f6';
 
     elBtnActionType.value = btnData.actionType || 'none';
+    setWidgetType(btnData.widgetType || 'button');
+
+    if (btnData.widgetType === 'switch') {
+      // Legacy switches (saved before ON/OFF commands existed) only have a
+      // single flat actionType/actionData — treat that as the ON command.
+      const legacyOnly = !btnData.onAction && !btnData.offAction && btnData.actionType && btnData.actionType !== 'none';
+      switchOnPicker.setAction(btnData.onAction || (legacyOnly ? { actionType: btnData.actionType, actionData: btnData.actionData } : null));
+      switchOffPicker.setAction(btnData.offAction || null);
+    } else {
+      switchOnPicker.setAction(null);
+      switchOffPicker.setAction(null);
+    }
   } else {
     setVisualType('icon');
 
@@ -1916,6 +2261,9 @@ function openEditorDrawer(row, col, btnData) {
     elBtnGlowColorText.value = '#3b82f6';
 
     elBtnActionType.value = 'none';
+    setWidgetType('button');
+    switchOnPicker.setAction(null);
+    switchOffPicker.setAction(null);
   }
 
   toggleEditorActionFields();
@@ -1925,6 +2273,13 @@ function openEditorDrawer(row, col, btnData) {
   if (elTwitchChatMessage) elTwitchChatMessage.value = '';
   if (elTwitchChatInterval) elTwitchChatInterval.value = '0';
   macroSteps = [];
+  elSpotifyVolumeValue.value = '50';
+  elSpotifyVolumeValueLabel.textContent = '50%';
+  elUrlActionValue.value = '';
+  elWebhookUrl.value = '';
+  elWebhookMethod.value = 'GET';
+  elWebhookBody.value = '';
+  elWebhookBodyGroup.style.display = 'none';
 
   // Populate specific action details
   if (btnData && btnData.actionData) {
@@ -1944,6 +2299,12 @@ function openEditorDrawer(row, col, btnData) {
         elObsSourceSceneText.value = data.params?.sceneName || '';
         elObsSourceNameSelect.value = data.params?.sourceName || '';
         elObsSourceNameText.value = data.params?.sourceName || '';
+      } else if (data.command === 'SetInputVolume') {
+        elObsVolumeInputSelect.value = data.params?.inputName || '';
+        elObsVolumeInputText.value = data.params?.inputName || '';
+        const vol = data.value ?? Math.round((data.params?.inputVolumeMul ?? 0.5) * 100);
+        elObsVolumeValue.value = vol;
+        elObsVolumeValueLabel.textContent = `${vol}%`;
       } else if (data.command === 'Custom') {
         elObsCustomRequest.value = data.customRequest || '';
         elObsCustomParams.value = JSON.stringify(data.params || {});
@@ -1962,6 +2323,17 @@ function openEditorDrawer(row, col, btnData) {
     } else if (btnData.actionType === 'macro') {
       macroSteps = JSON.parse(JSON.stringify(data.steps || []));
       renderMacroSteps();
+    } else if (btnData.actionType === 'spotify_volume') {
+      const vol = data.value ?? 50;
+      elSpotifyVolumeValue.value = vol;
+      elSpotifyVolumeValueLabel.textContent = `${vol}%`;
+    } else if (btnData.actionType === 'url') {
+      elUrlActionValue.value = data.url || '';
+    } else if (btnData.actionType === 'webhook') {
+      elWebhookUrl.value = data.url || '';
+      elWebhookMethod.value = data.method || 'GET';
+      elWebhookBody.value = data.body || '';
+      elWebhookBodyGroup.style.display = elWebhookMethod.value === 'POST' ? '' : 'none';
     }
   } else {
     elObsCmd.value = 'SetCurrentProgramScene';
@@ -1969,6 +2341,10 @@ function openEditorDrawer(row, col, btnData) {
     elObsSceneText.value = '';
     elObsInputSelect.value = '';
     elObsInputText.value = '';
+    elObsVolumeInputSelect.value = '';
+    elObsVolumeInputText.value = '';
+    elObsVolumeValue.value = '50';
+    elObsVolumeValueLabel.textContent = '50%';
     elObsSourceSceneSelect.value = '';
     elObsSourceSceneText.value = '';
     elObsSourceNameSelect.value = '';
@@ -2054,6 +2430,44 @@ elBtnRemoveImage.addEventListener('click', () => {
   updateLivePreview();
 });
 
+// fetch() has no upload-progress event, so file uploads go through
+// XMLHttpRequest instead, with the pairing PIN attached by hand since this
+// bypasses the window.fetch wrapper that does that for us elsewhere.
+function uploadWithProgress(url, formData, progressEl) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+
+    const fill = progressEl?.querySelector('.upload-progress-fill');
+    if (progressEl) {
+      progressEl.classList.remove('hidden');
+      if (fill) fill.style.width = '0%';
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable && fill) {
+          fill.style.width = `${Math.round((e.loaded / e.total) * 100)}%`;
+        }
+      });
+    }
+
+    xhr.onload = () => {
+      if (progressEl) progressEl.classList.add('hidden');
+      try {
+        resolve(JSON.parse(xhr.responseText));
+      } catch (e) {
+        reject(new Error('Invalid server response'));
+      }
+    };
+    xhr.onerror = () => {
+      if (progressEl) progressEl.classList.add('hidden');
+      reject(new Error('Network error during upload'));
+    };
+
+    const pin = getStoredPin();
+    if (pin) xhr.setRequestHeader('X-SDeck-Pin', pin);
+    xhr.send(formData);
+  });
+}
+
 async function uploadButtonImage(file) {
   if (!file.type.startsWith('image/')) {
     showToast('Only image files are accepted.', true);
@@ -2062,14 +2476,9 @@ async function uploadButtonImage(file) {
 
   const formData = new FormData();
   formData.append('image', file);
-  showToast('Uploading image...');
 
   try {
-    const response = await fetch('/api/button-image/upload', {
-      method: 'POST',
-      body: formData
-    });
-    const result = await response.json();
+    const result = await uploadWithProgress('/api/button-image/upload', formData, elBtnImageUploadProgress);
     if (result.success) {
       elBtnImageUrl.value = result.url;
       elBtnImagePreview.src = result.url;
@@ -2137,7 +2546,16 @@ elBtnLabel?.addEventListener('input', updateLivePreview);
 elBtnLabelImg?.addEventListener('input', updateLivePreview);
 
 elBtnActionType.addEventListener('change', toggleEditorActionFields);
-elObsCmd.addEventListener('change', toggleObsParamFields);
+elObsCmd.addEventListener('change', () => {
+  // A knob only makes sense driving a value, so don't let the OBS command
+  // wander away from SetInputVolume while Pad Style is Knob (dragging some
+  // other OBS command, e.g. ToggleInputMute, on every pointermove tick would
+  // spam that command instead of adjusting a volume).
+  if (currentWidgetType === 'knob' && elObsCmd.value !== 'SetInputVolume') {
+    elObsCmd.value = 'SetInputVolume';
+  }
+  toggleObsParamFields();
+});
 
 function toggleEditorActionFields() {
   const type = elBtnActionType.value;
@@ -2148,6 +2566,9 @@ function toggleEditorActionFields() {
   elFieldsClipboard?.classList.add('hidden');
   elFieldsTwitchChat?.classList.add('hidden');
   elFieldsMacro?.classList.add('hidden');
+  elFieldsSpotifyVolume?.classList.add('hidden');
+  elFieldsUrl?.classList.add('hidden');
+  elFieldsWebhook?.classList.add('hidden');
 
   if (type === 'obs') elFieldsObs.classList.remove('hidden');
   else if (type === 'system') elFieldsSystem.classList.remove('hidden');
@@ -2162,7 +2583,59 @@ function toggleEditorActionFields() {
     elFieldsMacro?.classList.remove('hidden');
     renderMacroSteps();
   }
+  else if (type === 'spotify_volume') elFieldsSpotifyVolume?.classList.remove('hidden');
+  else if (type === 'url') elFieldsUrl?.classList.remove('hidden');
+  else if (type === 'webhook') {
+    elFieldsWebhook?.classList.remove('hidden');
+    elWebhookBodyGroup.style.display = elWebhookMethod.value === 'POST' ? '' : 'none';
+  }
+
+  if (currentWidgetType === 'knob' && type === 'obs' && elObsCmd.value !== 'SetInputVolume') {
+    elObsCmd.value = 'SetInputVolume';
+    toggleObsParamFields();
+  }
 }
+
+// Pad Style (widgetType) selector — a knob only makes sense driving a
+// continuous value, so selecting it narrows the Action Type dropdown to the
+// two volume-capable types instead of letting it pair with e.g. "Play Sound".
+// A switch fires one of two fully independent commands depending on its
+// current on/off state, so it swaps the single Action Type editor out for
+// two of them (see switch-on/off pickers below) instead of trying to guess
+// on/off from a single command's real-world OBS state.
+const KNOB_COMPATIBLE_ACTION_TYPES = ['obs', 'spotify_volume'];
+let currentWidgetType = 'button';
+
+function setWidgetType(widgetType) {
+  currentWidgetType = widgetType;
+  elWidgetTypeTabs.querySelectorAll('.visual-type-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.widget === widgetType);
+  });
+  elWidgetKnobHint.style.display = widgetType === 'knob' ? '' : 'none';
+  elWidgetSwitchHint.style.display = widgetType === 'switch' ? '' : 'none';
+
+  elPrimaryActionEditor.classList.toggle('hidden', widgetType === 'switch');
+  elSwitchActionsContainer.classList.toggle('hidden', widgetType !== 'switch');
+
+  elBtnActionType.querySelectorAll('option').forEach(opt => {
+    opt.hidden = widgetType === 'knob' && opt.value !== 'none' && !KNOB_COMPATIBLE_ACTION_TYPES.includes(opt.value);
+  });
+
+  if (widgetType === 'knob') {
+    if (!KNOB_COMPATIBLE_ACTION_TYPES.includes(elBtnActionType.value)) {
+      elBtnActionType.value = 'obs';
+      toggleEditorActionFields();
+    }
+    if (elBtnActionType.value === 'obs' && elObsCmd.value !== 'SetInputVolume') {
+      elObsCmd.value = 'SetInputVolume';
+      toggleObsParamFields();
+    }
+  }
+}
+
+elWidgetTypeTabs.querySelectorAll('.visual-type-btn').forEach(btn => {
+  btn.addEventListener('click', () => setWidgetType(btn.dataset.widget));
+});
 
 function toggleObsParamFields() {
   const cmd = elObsCmd.value;
@@ -2170,10 +2643,12 @@ function toggleObsParamFields() {
   elParamObsInput.classList.add('hidden');
   elParamObsCustom.classList.add('hidden');
   elParamObsSource.classList.add('hidden');
+  elParamObsVolume.classList.add('hidden');
 
   if (cmd === 'SetCurrentProgramScene') elParamObsScene.classList.remove('hidden');
   else if (cmd === 'ToggleInputMute') elParamObsInput.classList.remove('hidden');
   else if (cmd === 'ToggleSourceVisibility') elParamObsSource.classList.remove('hidden');
+  else if (cmd === 'SetInputVolume') elParamObsVolume.classList.remove('hidden');
   else if (cmd === 'Custom') elParamObsCustom.classList.remove('hidden');
 }
 
@@ -2185,6 +2660,22 @@ elObsInputSelect.addEventListener('change', () => {
   elObsInputText.value = elObsInputSelect.value;
 });
 
+elObsVolumeInputSelect.addEventListener('change', () => {
+  elObsVolumeInputText.value = elObsVolumeInputSelect.value;
+});
+
+elObsVolumeValue.addEventListener('input', () => {
+  elObsVolumeValueLabel.textContent = `${elObsVolumeValue.value}%`;
+});
+
+elSpotifyVolumeValue.addEventListener('input', () => {
+  elSpotifyVolumeValueLabel.textContent = `${elSpotifyVolumeValue.value}%`;
+});
+
+elWebhookMethod.addEventListener('change', () => {
+  elWebhookBodyGroup.style.display = elWebhookMethod.value === 'POST' ? '' : 'none';
+});
+
 elObsSourceSceneSelect.addEventListener('change', () => {
   elObsSourceSceneText.value = elObsSourceSceneSelect.value;
 });
@@ -2193,51 +2684,276 @@ elObsSourceNameSelect.addEventListener('change', () => {
   elObsSourceNameText.value = elObsSourceNameSelect.value;
 });
 
+// -------------------------------------------------------------
+// SWITCH PAD STYLE — two independent commands (ON / OFF)
+// -------------------------------------------------------------
+// A switch fires one of two fully independent actions depending on its own
+// locally-persisted state, rather than trying to infer on/off from a single
+// command's real-world OBS state (which only worked for a handful of OBS
+// toggle commands). createActionPicker() wraps a clone of the main Action
+// Type + fields editor so the exact same UI can be instantiated twice —
+// once for "runs when turned ON", once for "runs when turned OFF" — driven
+// entirely by data-role lookups scoped to that clone's root, so ids never
+// need to collide with the main editor's.
+function createActionPicker(root) {
+  const q = (role) => root.querySelector(`[data-role="${role}"]`);
+  const elType = q('action-type');
+
+  // Switches fire one single action per state, not a multi-step macro, and
+  // macroSteps is a single global array the main editor already owns.
+  const macroOpt = elType.querySelector('option[value="macro"]');
+  if (macroOpt) macroOpt.remove();
+
+  const fieldGroups = {
+    obs: q('fields-obs'),
+    system: q('fields-system'),
+    nav: q('fields-nav'),
+    sound: q('fields-sound'),
+    clipboard: q('fields-clipboard'),
+    twitch_chat: q('fields-twitch-chat'),
+    spotify_volume: q('fields-spotify-volume'),
+    url: q('fields-url'),
+    webhook: q('fields-webhook')
+  };
+
+  function showFieldsFor(type) {
+    Object.values(fieldGroups).forEach(el => el && el.classList.add('hidden'));
+    if (fieldGroups[type]) fieldGroups[type].classList.remove('hidden');
+    if (type === 'webhook') {
+      q('webhook-body-group').style.display = q('webhook-method').value === 'POST' ? '' : 'none';
+    }
+  }
+  elType.addEventListener('change', () => showFieldsFor(elType.value));
+
+  const obsParams = {
+    SetCurrentProgramScene: q('param-obs-scene'),
+    ToggleInputMute: q('param-obs-input'),
+    ToggleSourceVisibility: q('param-obs-source'),
+    SetInputVolume: q('param-obs-volume'),
+    Custom: q('param-obs-custom')
+  };
+  function showObsParamsFor(cmd) {
+    Object.values(obsParams).forEach(el => el && el.classList.add('hidden'));
+    if (obsParams[cmd]) obsParams[cmd].classList.remove('hidden');
+  }
+  q('obs-cmd').addEventListener('change', () => showObsParamsFor(q('obs-cmd').value));
+
+  q('obs-scene-select').addEventListener('change', () => { q('obs-scene-text').value = q('obs-scene-select').value; });
+  q('obs-input-select').addEventListener('change', () => { q('obs-input-text').value = q('obs-input-select').value; });
+  q('obs-volume-input-select').addEventListener('change', () => { q('obs-volume-input-text').value = q('obs-volume-input-select').value; });
+  q('obs-source-scene-select').addEventListener('change', () => { q('obs-source-scene-text').value = q('obs-source-scene-select').value; });
+  q('obs-source-name-select').addEventListener('change', () => { q('obs-source-name-text').value = q('obs-source-name-select').value; });
+  q('obs-volume-value').addEventListener('input', () => { q('obs-volume-value-label').textContent = `${q('obs-volume-value').value}%`; });
+  q('spotify-volume-value').addEventListener('input', () => { q('spotify-volume-value-label').textContent = `${q('spotify-volume-value').value}%`; });
+  q('webhook-method').addEventListener('change', () => {
+    q('webhook-body-group').style.display = q('webhook-method').value === 'POST' ? '' : 'none';
+  });
+
+  function reset() {
+    elType.value = 'none';
+    showFieldsFor('none');
+    q('system-cmd').value = '';
+    q('obs-cmd').value = 'SetCurrentProgramScene';
+    showObsParamsFor('SetCurrentProgramScene');
+    q('obs-scene-select').value = ''; q('obs-scene-text').value = '';
+    q('obs-input-select').value = ''; q('obs-input-text').value = '';
+    q('obs-volume-input-select').value = ''; q('obs-volume-input-text').value = '';
+    q('obs-volume-value').value = '50'; q('obs-volume-value-label').textContent = '50%';
+    q('obs-source-scene-select').value = ''; q('obs-source-scene-text').value = '';
+    q('obs-source-name-select').value = ''; q('obs-source-name-text').value = '';
+    q('obs-custom-request').value = ''; q('obs-custom-params').value = '';
+    q('nav-target-profile').value = '';
+    q('sound-select').value = '';
+    q('clipboard-text').value = '';
+    q('twitch-chat-message').value = '';
+    q('twitch-chat-interval').value = '0';
+    q('spotify-volume-value').value = '50'; q('spotify-volume-value-label').textContent = '50%';
+    q('url-action-value').value = '';
+    q('webhook-url').value = '';
+    q('webhook-method').value = 'GET';
+    q('webhook-body').value = '';
+  }
+
+  function setAction(action) {
+    reset();
+    const actionType = action?.actionType || 'none';
+    const data = action?.actionData || {};
+    elType.value = actionType;
+    showFieldsFor(actionType);
+    if (actionType === 'obs') {
+      const cmd = data.command || 'SetCurrentProgramScene';
+      q('obs-cmd').value = cmd;
+      showObsParamsFor(cmd);
+      if (cmd === 'SetCurrentProgramScene') {
+        q('obs-scene-select').value = data.params?.sceneName || '';
+        q('obs-scene-text').value = data.params?.sceneName || '';
+      } else if (cmd === 'ToggleInputMute') {
+        q('obs-input-select').value = data.params?.inputName || '';
+        q('obs-input-text').value = data.params?.inputName || '';
+      } else if (cmd === 'ToggleSourceVisibility') {
+        q('obs-source-scene-select').value = data.params?.sceneName || '';
+        q('obs-source-scene-text').value = data.params?.sceneName || '';
+        q('obs-source-name-select').value = data.params?.sourceName || '';
+        q('obs-source-name-text').value = data.params?.sourceName || '';
+      } else if (cmd === 'SetInputVolume') {
+        q('obs-volume-input-select').value = data.params?.inputName || '';
+        q('obs-volume-input-text').value = data.params?.inputName || '';
+        const vol = data.value ?? Math.round((data.params?.inputVolumeMul ?? 0.5) * 100);
+        q('obs-volume-value').value = vol;
+        q('obs-volume-value-label').textContent = `${vol}%`;
+      } else if (cmd === 'Custom') {
+        q('obs-custom-request').value = data.customRequest || '';
+        q('obs-custom-params').value = JSON.stringify(data.params || {});
+      }
+    } else if (actionType === 'system') {
+      q('system-cmd').value = data.command || '';
+    } else if (actionType === 'nav') {
+      q('nav-target-profile').value = data.targetProfile || '';
+    } else if (actionType === 'sound') {
+      q('sound-select').value = data.file || '';
+    } else if (actionType === 'clipboard') {
+      q('clipboard-text').value = data.text || '';
+    } else if (actionType === 'twitch_chat') {
+      q('twitch-chat-message').value = data.message || '';
+      q('twitch-chat-interval').value = data.interval || 0;
+    } else if (actionType === 'spotify_volume') {
+      const vol = data.value ?? 50;
+      q('spotify-volume-value').value = vol;
+      q('spotify-volume-value-label').textContent = `${vol}%`;
+    } else if (actionType === 'url') {
+      q('url-action-value').value = data.url || '';
+    } else if (actionType === 'webhook') {
+      q('webhook-url').value = data.url || '';
+      q('webhook-method').value = data.method || 'GET';
+      q('webhook-body').value = data.body || '';
+      q('webhook-body-group').style.display = q('webhook-method').value === 'POST' ? '' : 'none';
+    }
+  }
+
+  // Mirrors the main editor's Save Changes handler below, one action type
+  // at a time. Returns undefined (after toasting the problem) on validation
+  // failure so the caller can abort the save, same as the main handler does.
+  function getAction() {
+    const actionType = elType.value;
+    let actionData = null;
+    if (actionType === 'obs') {
+      const command = q('obs-cmd').value;
+      let params = {};
+      if (command === 'SetCurrentProgramScene') {
+        params = { sceneName: q('obs-scene-text').value.trim() };
+        actionData = { command, params };
+      } else if (command === 'ToggleInputMute') {
+        params = { inputName: q('obs-input-text').value.trim() };
+        actionData = { command, params };
+      } else if (command === 'ToggleSourceVisibility') {
+        params = { sceneName: q('obs-source-scene-text').value.trim(), sourceName: q('obs-source-name-text').value.trim() };
+        actionData = { command, params };
+      } else if (command === 'SetInputVolume') {
+        const value = Number(q('obs-volume-value').value);
+        params = { inputName: q('obs-volume-input-text').value.trim(), inputVolumeMul: value / 100 };
+        actionData = { command, params, value };
+      } else if (command === 'Custom') {
+        try {
+          params = JSON.parse(q('obs-custom-params').value || '{}');
+        } catch (e) {
+          showToast('Invalid JSON in OBS custom params', true);
+          return undefined;
+        }
+        actionData = { command: 'Custom', customRequest: q('obs-custom-request').value.trim(), params };
+      } else {
+        actionData = { command, params };
+      }
+    } else if (actionType === 'system') {
+      actionData = { command: q('system-cmd').value.trim() };
+    } else if (actionType === 'nav') {
+      actionData = { targetProfile: q('nav-target-profile').value };
+    } else if (actionType === 'sound') {
+      actionData = { file: q('sound-select').value };
+    } else if (actionType === 'clipboard') {
+      actionData = { text: q('clipboard-text').value || '' };
+    } else if (actionType === 'twitch_chat') {
+      actionData = { message: q('twitch-chat-message').value.trim(), interval: parseInt(q('twitch-chat-interval').value || '0', 10) || 0 };
+    } else if (actionType === 'spotify_volume') {
+      actionData = { value: Number(q('spotify-volume-value').value) };
+    } else if (actionType === 'url') {
+      actionData = { url: q('url-action-value').value.trim() };
+    } else if (actionType === 'webhook') {
+      const url = q('webhook-url').value.trim();
+      const method = q('webhook-method').value;
+      let body = '';
+      if (method === 'POST' && q('webhook-body').value.trim()) {
+        body = q('webhook-body').value.trim();
+        try { JSON.parse(body); } catch (e) { showToast('Webhook body must be valid JSON', true); return undefined; }
+      }
+      actionData = { url, method, body };
+    }
+    return { actionType, actionData };
+  }
+
+  return { setAction, getAction };
+}
+
+function cloneActionEditorRoot(prefix) {
+  const clone = elPrimaryActionEditor.cloneNode(true);
+  clone.removeAttribute('id');
+  clone.classList.remove('hidden');
+  // Rewrite every id (and matching label[for]) so none collide with the
+  // original editor's — data-role attributes (used for all lookups above)
+  // travel with the clone untouched.
+  clone.querySelectorAll('[id]').forEach(el => { el.id = `${prefix}-${el.id}`; });
+  clone.querySelectorAll('label[for]').forEach(label => {
+    label.setAttribute('for', `${prefix}-${label.getAttribute('for')}`);
+  });
+  return clone;
+}
+
+let switchOnPicker = null;
+let switchOffPicker = null;
+
+function initSwitchActionPickers() {
+  const onRoot = cloneActionEditorRoot('switch-on');
+  const onHeading = document.createElement('div');
+  onHeading.className = 'form-group';
+  onHeading.innerHTML = '<label style="color:var(--neon-cyan);font-weight:800;">Command 1 — runs when turned ON</label>';
+  document.getElementById('switch-on-action-editor').append(onHeading, onRoot);
+  switchOnPicker = createActionPicker(onRoot);
+
+  const offRoot = cloneActionEditorRoot('switch-off');
+  const offHeading = document.createElement('div');
+  offHeading.className = 'form-group';
+  offHeading.innerHTML = '<label style="color:var(--neon-magenta);font-weight:800;">Command 2 — runs when turned OFF</label>';
+  document.getElementById('switch-off-action-editor').append(offHeading, offRoot);
+  switchOffPicker = createActionPicker(offRoot);
+}
+initSwitchActionPickers();
+
+// Fills every element sharing `data-role="<role>"` across the document —
+// this is what lets the switch's cloned ON/OFF action pickers (see below)
+// share these dropdowns with the main editor instead of needing their own
+// copy of this population logic.
+function fillRoleSelects(role, placeholder, items, getValue, getLabel) {
+  document.querySelectorAll(`[data-role="${role}"]`).forEach(sel => {
+    sel.innerHTML = '';
+    const placeholderOpt = document.createElement('option');
+    placeholderOpt.value = '';
+    placeholderOpt.textContent = placeholder;
+    sel.appendChild(placeholderOpt);
+    items.forEach(item => {
+      const opt = document.createElement('option');
+      opt.value = getValue(item);
+      opt.textContent = getLabel(item);
+      sel.appendChild(opt);
+    });
+  });
+}
+
 function populateEditorDropdowns() {
-  // Scene select
-  elObsSceneSelect.innerHTML = '<option value="">-- Select Scene --</option>';
-  obsScenes.forEach(scene => {
-    const opt = document.createElement('option');
-    opt.value = scene;
-    opt.textContent = scene;
-    elObsSceneSelect.appendChild(opt);
-  });
-
-  // Input select
-  elObsInputSelect.innerHTML = '<option value="">-- Select Input --</option>';
-  obsInputs.forEach(input => {
-    const opt = document.createElement('option');
-    opt.value = input;
-    opt.textContent = input;
-    elObsInputSelect.appendChild(opt);
-  });
-
-  // Nav profile target select
-  elNavTargetProfile.innerHTML = '<option value="">-- Select Profile --</option>';
-  Object.keys(profiles).forEach(pId => {
-    const opt = document.createElement('option');
-    opt.value = pId;
-    opt.textContent = profiles[pId].name;
-    elNavTargetProfile.appendChild(opt);
-  });
-
-  // OBS Toggle Source Scene Select
-  elObsSourceSceneSelect.innerHTML = '<option value="">-- Active Scene / Auto-detect --</option>';
-  obsScenes.forEach(scene => {
-    const opt = document.createElement('option');
-    opt.value = scene;
-    opt.textContent = scene;
-    elObsSourceSceneSelect.appendChild(opt);
-  });
-
-  // OBS Toggle Source Name Select
-  elObsSourceNameSelect.innerHTML = '<option value="">-- Select Source --</option>';
-  obsActiveSceneItems.forEach(item => {
-    const opt = document.createElement('option');
-    opt.value = item.sourceName;
-    opt.textContent = item.sourceName;
-    elObsSourceNameSelect.appendChild(opt);
-  });
+  fillRoleSelects('obs-scene-select', '-- Select Scene --', obsScenes, s => s, s => s);
+  fillRoleSelects('obs-input-select', '-- Select Input --', obsInputs, i => i, i => i);
+  fillRoleSelects('obs-volume-input-select', '-- Select Input --', obsInputs, i => i, i => i);
+  fillRoleSelects('nav-target-profile', '-- Select Profile --', Object.keys(profiles), id => id, id => profiles[id].name);
+  fillRoleSelects('obs-source-scene-select', '-- Active Scene / Auto-detect --', obsScenes, s => s, s => s);
+  fillRoleSelects('obs-source-name-select', '-- Select Source --', obsActiveSceneItems, item => item.sourceName, item => item.sourceName);
 
   populateDrawerSoundSelect();
 }
@@ -2255,80 +2971,127 @@ elSaveActionBtn.addEventListener('click', () => {
 
   let colSpan = 1;
   let rowSpan = 1;
+  let existingBtnData = null;
   if (selectedButtonCell.type === 'grid') {
     const cellId = `${selectedButtonCell.row}-${selectedButtonCell.col}`;
-    const existingBtn = activeProfile.buttons[cellId];
-    if (existingBtn) {
-      colSpan = existingBtn.colSpan || 1;
-      rowSpan = existingBtn.rowSpan || 1;
+    existingBtnData = activeProfile.buttons[cellId] || null;
+    if (existingBtnData) {
+      colSpan = existingBtnData.colSpan || 1;
+      rowSpan = existingBtnData.rowSpan || 1;
     }
+  } else if (selectedButtonCell.type === 'fav') {
+    existingBtnData = activeProfile.favorites[selectedButtonCell.index] || null;
   }
 
   const color = elBtnColor.value;
   const iconColor = elBtnIconColor.value;
   const textColor = elBtnTextColor.value;
   const glowColor = elBtnGlowColor.value;
-  const actionType = elBtnActionType.value;
 
-  let actionData = null;
+  let btnData;
 
-  if (actionType === 'obs') {
-    const command = elObsCmd.value;
-    let params = {};
-    if (command === 'SetCurrentProgramScene') {
-      params = { sceneName: elObsSceneText.value.trim() };
-      actionData = { command, params };
-    } else if (command === 'ToggleInputMute') {
-      params = { inputName: elObsInputText.value.trim() };
-      actionData = { command, params };
-    } else if (command === 'ToggleSourceVisibility') {
-      params = {
-        sceneName: elObsSourceSceneText.value.trim(),
-        sourceName: elObsSourceNameText.value.trim()
-      };
-      actionData = { command, params };
-    } else if (command === 'Custom') {
-      try {
-        params = JSON.parse(elObsCustomParams.value || '{}');
-      } catch(e) {
-        showToast('Invalid JSON in OBS custom params', true);
+  if (currentWidgetType === 'switch') {
+    const onAction = switchOnPicker.getAction();
+    const offAction = switchOffPicker.getAction();
+    if (!onAction || !offAction) return; // validation error already toasted inside getAction()
+
+    const hasVisual = label || image || icon;
+    const isBlank = !hasVisual && onAction.actionType === 'none' && offAction.actionType === 'none';
+    btnData = isBlank ? null : {
+      label, icon, image, color, iconColor, textColor, glowColor, colSpan, rowSpan,
+      widgetType: 'switch',
+      switchState: typeof existingBtnData?.switchState === 'boolean' ? existingBtnData.switchState : false,
+      onAction,
+      offAction
+    };
+  } else {
+    const actionType = elBtnActionType.value;
+    let actionData = null;
+
+    if (actionType === 'obs') {
+      const command = elObsCmd.value;
+      let params = {};
+      if (command === 'SetCurrentProgramScene') {
+        params = { sceneName: elObsSceneText.value.trim() };
+        actionData = { command, params };
+      } else if (command === 'ToggleInputMute') {
+        params = { inputName: elObsInputText.value.trim() };
+        actionData = { command, params };
+      } else if (command === 'ToggleSourceVisibility') {
+        params = {
+          sceneName: elObsSourceSceneText.value.trim(),
+          sourceName: elObsSourceNameText.value.trim()
+        };
+        actionData = { command, params };
+      } else if (command === 'SetInputVolume') {
+        const value = Number(elObsVolumeValue.value);
+        params = { inputName: elObsVolumeInputText.value.trim(), inputVolumeMul: value / 100 };
+        actionData = { command, params, value };
+      } else if (command === 'Custom') {
+        try {
+          params = JSON.parse(elObsCustomParams.value || '{}');
+        } catch(e) {
+          showToast('Invalid JSON in OBS custom params', true);
+          return;
+        }
+        actionData = {
+          command: 'Custom',
+          customRequest: elObsCustomRequest.value.trim(),
+          params
+        };
+      } else {
+        actionData = { command, params };
+      }
+    } else if (actionType === 'system') {
+      actionData = { command: elSystemCmd.value.trim() };
+    } else if (actionType === 'nav') {
+      actionData = { targetProfile: elNavTargetProfile.value };
+    } else if (actionType === 'sound') {
+      actionData = { file: elSoundSelect.value };
+    } else if (actionType === 'clipboard') {
+      actionData = { text: elClipboardText?.value || '' };
+    } else if (actionType === 'twitch_chat') {
+      const msg = elTwitchChatMessage?.value?.trim() || '';
+      if (!msg) { showToast('Enter a chat message!', true); return; }
+      actionData = { message: msg, interval: parseInt(elTwitchChatInterval?.value || '0', 10) || 0 };
+    } else if (actionType === 'macro') {
+      if (macroSteps.length === 0) {
+        showToast('Add at least one step to the macro!', true);
         return;
       }
-      actionData = {
-        command: 'Custom',
-        customRequest: elObsCustomRequest.value.trim(),
-        params
-      };
-    } else {
-      actionData = { command, params };
-    }
-  } else if (actionType === 'system') {
-    actionData = { command: elSystemCmd.value.trim() };
-  } else if (actionType === 'nav') {
-    actionData = { targetProfile: elNavTargetProfile.value };
-  } else if (actionType === 'sound') {
-    actionData = { file: elSoundSelect.value };
-  } else if (actionType === 'clipboard') {
-    actionData = { text: elClipboardText?.value || '' };
-  } else if (actionType === 'twitch_chat') {
-    const msg = elTwitchChatMessage?.value?.trim() || '';
-    if (!msg) { showToast('Enter a chat message!', true); return; }
-    actionData = { message: msg, interval: parseInt(elTwitchChatInterval?.value || '0', 10) || 0 };
-  } else if (actionType === 'macro') {
-    if (macroSteps.length === 0) {
-      showToast('Add at least one step to the macro!', true);
-      return;
-    }
-    actionData = { steps: JSON.parse(JSON.stringify(macroSteps)) };
-  }
-
-  const hasVisual = label || image || icon;
-  const btnData = (actionType !== 'none' || hasVisual)
-    ? {
-        label, icon, image, color, iconColor, textColor, glowColor, colSpan, rowSpan,
-        ...(actionType !== 'none' ? { actionType, actionData } : {})
+      actionData = { steps: JSON.parse(JSON.stringify(macroSteps)) };
+    } else if (actionType === 'spotify_volume') {
+      actionData = { value: Number(elSpotifyVolumeValue.value) };
+    } else if (actionType === 'url') {
+      const url = elUrlActionValue?.value?.trim() || '';
+      if (!url) { showToast('Enter a URL!', true); return; }
+      actionData = { url };
+    } else if (actionType === 'webhook') {
+      const url = elWebhookUrl?.value?.trim() || '';
+      if (!url) { showToast('Enter a webhook URL!', true); return; }
+      const method = elWebhookMethod.value;
+      let body = '';
+      if (method === 'POST' && elWebhookBody.value.trim()) {
+        body = elWebhookBody.value.trim();
+        try {
+          JSON.parse(body);
+        } catch (e) {
+          showToast('Webhook body must be valid JSON', true);
+          return;
+        }
       }
-    : null;
+      actionData = { url, method, body };
+    }
+
+    const hasVisual = label || image || icon;
+    btnData = (actionType !== 'none' || hasVisual)
+      ? {
+          label, icon, image, color, iconColor, textColor, glowColor, colSpan, rowSpan,
+          widgetType: currentWidgetType,
+          ...(actionType !== 'none' ? { actionType, actionData } : {})
+        }
+      : null;
+  }
 
   if (selectedButtonCell.type === 'grid') {
     const cellId = `${selectedButtonCell.row}-${selectedButtonCell.col}`;
@@ -2344,7 +3107,8 @@ elSaveActionBtn.addEventListener('click', () => {
   // Update backend
   socket.send(JSON.stringify({
     type: 'save_profiles',
-    profiles: profiles
+    profiles: profiles,
+    activeProfile: currentProfileId
   }));
 
   closeEditorDrawer();
@@ -2365,9 +3129,74 @@ elClearActionBtn.addEventListener('click', () => {
 
   socket.send(JSON.stringify({
     type: 'save_profiles',
-    profiles: profiles
+    profiles: profiles,
+    activeProfile: currentProfileId
   }));
 
+  closeEditorDrawer();
+});
+
+// Copy/paste a single button as a shareable JSON preset (e.g. to send a
+// "raid button" or OBS scene-swap macro to another streamer).
+elCopyActionBtn.addEventListener('click', async () => {
+  if (!selectedButtonCell) return;
+  if (!navigator.clipboard) {
+    showToast('Clipboard access requires HTTPS or localhost.', true);
+    return;
+  }
+  const activeProfile = profiles[currentProfileId];
+  if (!activeProfile) return;
+
+  const btnData = selectedButtonCell.type === 'grid'
+    ? activeProfile.buttons[`${selectedButtonCell.row}-${selectedButtonCell.col}`]
+    : activeProfile.favorites[selectedButtonCell.index];
+
+  if (!btnData) {
+    showToast('Nothing to copy — save the button first.', true);
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(btnData, null, 2));
+    showToast('Button copied! Paste it onto another button to share it.');
+  } catch (err) {
+    showToast('Could not access clipboard.', true);
+  }
+});
+
+elPasteActionBtn.addEventListener('click', async () => {
+  if (!selectedButtonCell) return;
+  if (!navigator.clipboard) {
+    showToast('Clipboard access requires HTTPS or localhost.', true);
+    return;
+  }
+  const activeProfile = profiles[currentProfileId];
+  if (!activeProfile) return;
+
+  let parsed;
+  try {
+    parsed = JSON.parse(await navigator.clipboard.readText());
+  } catch (err) {
+    showToast('Clipboard does not contain a valid button preset.', true);
+    return;
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    showToast('Clipboard does not contain a valid button preset.', true);
+    return;
+  }
+
+  if (selectedButtonCell.type === 'grid') {
+    const cellId = `${selectedButtonCell.row}-${selectedButtonCell.col}`;
+    const existing = activeProfile.buttons[cellId];
+    parsed.colSpan = existing?.colSpan || parsed.colSpan || 1;
+    parsed.rowSpan = existing?.rowSpan || parsed.rowSpan || 1;
+    activeProfile.buttons[cellId] = parsed;
+  } else {
+    activeProfile.favorites[selectedButtonCell.index] = parsed;
+  }
+
+  socket.send(JSON.stringify({ type: 'save_profiles', profiles, activeProfile: currentProfileId }));
+  showToast('Button pasted!');
   closeEditorDrawer();
 });
 
@@ -2490,7 +3319,7 @@ function updateSpotifyPlaystate(spotifyState) {
   } else {
     if (elSpotifyStatusText) {
       if (isSpotifyConnected) {
-        elSpotifyStatusText.textContent = "Conectado / Sem reprodução";
+        elSpotifyStatusText.textContent = "Connected / Not Playing";
         elSpotifyStatusText.className = "status-badge connected";
       } else {
         elSpotifyStatusText.textContent = "Nothing playing";
@@ -2577,30 +3406,39 @@ elSpotifyTimeline.addEventListener('click', (e) => {
 // SOUNDBOARD & WEB AUDIO SYNTHESIZER
 // -------------------------------------------------------------
 function playAudioFile(soundName) {
-  const synths = ['airhorn','siren','coin','laser','boom','success','drumroll','rimshot','notification','level_up','sad_trombone','fanfare','error','chime','heartbeat','powerup','sub_alert','glitch'];
-  if (synths.includes(soundName)) {
-    triggerLocalSynthSound(soundName);
+  // Whether a sound is a procedural synth vs. an uploaded file lives on the
+  // server (DEFAULT_SYNTHS) and reaches us via /api/soundboard/sounds — no
+  // need to keep a second, easily-drifting copy of that list here.
+  const meta = customSounds.find(s => s.id === soundName);
+  const volume = (meta?.volume ?? 100) / 100;
+
+  if (meta?.isSynth) {
+    triggerLocalSynthSound(soundName, volume);
   } else {
     const src = soundName.startsWith('/uploads') ? soundName : `/uploads/${soundName}`;
     const audio = new Audio(src);
+    audio.volume = volume;
     audio.play().catch(err => {
       console.warn('Error playing audio:', err);
     });
   }
 }
 
-function triggerLocalSynthSound(type) {
+function triggerLocalSynthSound(type, volume = 1) {
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  
+  const masterGain = audioCtx.createGain();
+  masterGain.gain.value = volume;
+  masterGain.connect(audioCtx.destination);
+
   if (type === 'coin') {
     playTone(audioCtx, 587.33, 'sine', 0.08, 0, () => {
-      playTone(audioCtx, 880, 'sine', 0.25, 0.08);
-    });
+      playTone(audioCtx, 880, 'sine', 0.25, 0.08, null, masterGain);
+    }, masterGain);
   } else if (type === 'laser') {
     const osc = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
     osc.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
+    gainNode.connect(masterGain);
     
     const now = audioCtx.currentTime;
     osc.type = 'sawtooth';
@@ -2620,7 +3458,7 @@ function triggerLocalSynthSound(type) {
       const osc = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
       osc.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
+      gainNode.connect(masterGain);
       
       osc.frequency.setValueAtTime(freq, start);
       gainNode.gain.setValueAtTime(0.15, start);
@@ -2633,7 +3471,7 @@ function triggerLocalSynthSound(type) {
     const osc = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
     osc.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
+    gainNode.connect(masterGain);
     
     const now = audioCtx.currentTime;
     osc.type = 'triangle';
@@ -2652,7 +3490,7 @@ function triggerLocalSynthSound(type) {
       const osc = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
       osc.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
+      gainNode.connect(masterGain);
       
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(freq, now);
@@ -2668,7 +3506,7 @@ function triggerLocalSynthSound(type) {
     const osc = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
     osc.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
+    gainNode.connect(masterGain);
     const now = audioCtx.currentTime;
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(400, now);
@@ -2687,7 +3525,7 @@ function triggerLocalSynthSound(type) {
       const t = now + i * 0.07;
       const osc = audioCtx.createOscillator();
       const g = audioCtx.createGain();
-      osc.connect(g); g.connect(audioCtx.destination);
+      osc.connect(g); g.connect(masterGain);
       osc.type = 'square';
       osc.frequency.setValueAtTime(80 + Math.random() * 30, t);
       g.gain.setValueAtTime(0.12, t);
@@ -2700,14 +3538,14 @@ function triggerLocalSynthSound(type) {
     [200, 250].forEach(freq => {
       const osc = audioCtx.createOscillator();
       const g = audioCtx.createGain();
-      osc.connect(g); g.connect(audioCtx.destination);
+      osc.connect(g); g.connect(masterGain);
       osc.type = 'square'; osc.frequency.setValueAtTime(freq, now);
       g.gain.setValueAtTime(0.15, now); g.gain.linearRampToValueAtTime(0.01, now + 0.12);
       osc.start(now); osc.stop(now + 0.12);
     });
     const osc2 = audioCtx.createOscillator();
     const g2 = audioCtx.createGain();
-    osc2.connect(g2); g2.connect(audioCtx.destination);
+    osc2.connect(g2); g2.connect(masterGain);
     osc2.type = 'sine'; osc2.frequency.setValueAtTime(440, now + 0.15);
     osc2.frequency.exponentialRampToValueAtTime(220, now + 0.55);
     g2.gain.setValueAtTime(0.18, now + 0.15); g2.gain.linearRampToValueAtTime(0.01, now + 0.55);
@@ -2718,7 +3556,7 @@ function triggerLocalSynthSound(type) {
     [880, 1108, 1318].forEach((freq, i) => {
       const osc = audioCtx.createOscillator();
       const g = audioCtx.createGain();
-      osc.connect(g); g.connect(audioCtx.destination);
+      osc.connect(g); g.connect(masterGain);
       osc.type = 'sine'; osc.frequency.setValueAtTime(freq, now + i * 0.1);
       g.gain.setValueAtTime(0.12, now + i * 0.1); g.gain.linearRampToValueAtTime(0.01, now + i * 0.1 + 0.15);
       osc.start(now + i * 0.1); osc.stop(now + i * 0.1 + 0.15);
@@ -2729,7 +3567,7 @@ function triggerLocalSynthSound(type) {
     [261, 329, 392, 523, 659, 784].forEach((freq, i) => {
       const osc = audioCtx.createOscillator();
       const g = audioCtx.createGain();
-      osc.connect(g); g.connect(audioCtx.destination);
+      osc.connect(g); g.connect(masterGain);
       osc.type = 'square'; osc.frequency.setValueAtTime(freq, now + i * 0.07);
       g.gain.setValueAtTime(0.1, now + i * 0.07); g.gain.linearRampToValueAtTime(0.01, now + i * 0.07 + 0.09);
       osc.start(now + i * 0.07); osc.stop(now + i * 0.07 + 0.1);
@@ -2741,7 +3579,7 @@ function triggerLocalSynthSound(type) {
     notes.forEach((freq, i) => {
       const osc = audioCtx.createOscillator();
       const g = audioCtx.createGain();
-      osc.connect(g); g.connect(audioCtx.destination);
+      osc.connect(g); g.connect(masterGain);
       osc.type = 'sawtooth'; osc.frequency.setValueAtTime(freq, now + i * 0.18);
       g.gain.setValueAtTime(0.15, now + i * 0.18); g.gain.linearRampToValueAtTime(0.01, now + i * 0.18 + 0.25);
       osc.start(now + i * 0.18); osc.stop(now + i * 0.18 + 0.28);
@@ -2753,7 +3591,7 @@ function triggerLocalSynthSound(type) {
     seq.forEach(([freq, t]) => {
       const osc = audioCtx.createOscillator();
       const g = audioCtx.createGain();
-      osc.connect(g); g.connect(audioCtx.destination);
+      osc.connect(g); g.connect(masterGain);
       osc.type = 'triangle'; osc.frequency.setValueAtTime(freq, now + t);
       g.gain.setValueAtTime(0.18, now + t); g.gain.linearRampToValueAtTime(0.01, now + t + 0.18);
       osc.start(now + t); osc.stop(now + t + 0.2);
@@ -2764,7 +3602,7 @@ function triggerLocalSynthSound(type) {
     [220, 200].forEach((freq, i) => {
       const osc = audioCtx.createOscillator();
       const g = audioCtx.createGain();
-      osc.connect(g); g.connect(audioCtx.destination);
+      osc.connect(g); g.connect(masterGain);
       osc.type = 'square'; osc.frequency.setValueAtTime(freq, now + i * 0.2);
       g.gain.setValueAtTime(0.18, now + i * 0.2); g.gain.linearRampToValueAtTime(0.01, now + i * 0.2 + 0.18);
       osc.start(now + i * 0.2); osc.stop(now + i * 0.2 + 0.2);
@@ -2775,7 +3613,7 @@ function triggerLocalSynthSound(type) {
     [1318, 1568, 2093].forEach((freq, i) => {
       const osc = audioCtx.createOscillator();
       const g = audioCtx.createGain();
-      osc.connect(g); g.connect(audioCtx.destination);
+      osc.connect(g); g.connect(masterGain);
       osc.type = 'sine'; osc.frequency.setValueAtTime(freq, now + i * 0.12);
       g.gain.setValueAtTime(0.14, now + i * 0.12); g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.5);
       osc.start(now + i * 0.12); osc.stop(now + i * 0.12 + 0.5);
@@ -2786,7 +3624,7 @@ function triggerLocalSynthSound(type) {
     [0, 0.35].forEach(offset => {
       const osc = audioCtx.createOscillator();
       const g = audioCtx.createGain();
-      osc.connect(g); g.connect(audioCtx.destination);
+      osc.connect(g); g.connect(masterGain);
       osc.type = 'sine'; osc.frequency.setValueAtTime(80, now + offset);
       osc.frequency.linearRampToValueAtTime(40, now + offset + 0.12);
       g.gain.setValueAtTime(0.3, now + offset); g.gain.linearRampToValueAtTime(0.01, now + offset + 0.15);
@@ -2796,7 +3634,7 @@ function triggerLocalSynthSound(type) {
   } else if (type === 'powerup') {
     const osc = audioCtx.createOscillator();
     const g = audioCtx.createGain();
-    osc.connect(g); g.connect(audioCtx.destination);
+    osc.connect(g); g.connect(masterGain);
     const now = audioCtx.currentTime;
     osc.type = 'square';
     osc.frequency.setValueAtTime(200, now);
@@ -2810,7 +3648,7 @@ function triggerLocalSynthSound(type) {
     seq.forEach(([freq, t]) => {
       const osc = audioCtx.createOscillator();
       const g = audioCtx.createGain();
-      osc.connect(g); g.connect(audioCtx.destination);
+      osc.connect(g); g.connect(masterGain);
       osc.type = 'sine'; osc.frequency.setValueAtTime(freq, now + t);
       g.gain.setValueAtTime(0.15, now + t); g.gain.linearRampToValueAtTime(0.01, now + t + 0.1);
       osc.start(now + t); osc.stop(now + t + 0.12);
@@ -2822,7 +3660,7 @@ function triggerLocalSynthSound(type) {
       const t = now + i * 0.04;
       const osc = audioCtx.createOscillator();
       const g = audioCtx.createGain();
-      osc.connect(g); g.connect(audioCtx.destination);
+      osc.connect(g); g.connect(masterGain);
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(100 + Math.random() * 800, t);
       g.gain.setValueAtTime(0.1, t); g.gain.linearRampToValueAtTime(0.01, t + 0.035);
@@ -2831,11 +3669,11 @@ function triggerLocalSynthSound(type) {
   }
 }
 
-function playTone(ctx, freq, type, duration, delay = 0, callback = null) {
+function playTone(ctx, freq, type, duration, delay = 0, callback = null, destination = null) {
   const osc = ctx.createOscillator();
   const gainNode = ctx.createGain();
   osc.connect(gainNode);
-  gainNode.connect(ctx.destination);
+  gainNode.connect(destination || ctx.destination);
   
   const start = ctx.currentTime + delay;
   osc.type = type;
@@ -2893,6 +3731,7 @@ async function loadSoundboardCustomSounds() {
         const editBtn = document.createElement('button');
         editBtn.className = 'sound-mini-btn edit';
         editBtn.title = 'Rename';
+        editBtn.setAttribute('aria-label', `Rename ${sound.name}`);
         editBtn.innerHTML = '<i data-lucide="pencil"></i>';
         editBtn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -2905,21 +3744,43 @@ async function loadSoundboardCustomSounds() {
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'sound-mini-btn delete';
         deleteBtn.title = 'Delete/Hide';
+        deleteBtn.setAttribute('aria-label', `Delete or hide ${sound.name}`);
         deleteBtn.innerHTML = '<i data-lucide="trash-2"></i>';
-        deleteBtn.addEventListener('click', (e) => {
+        deleteBtn.addEventListener('click', async (e) => {
           e.stopPropagation();
-          const confirmMsg = sound.isSynth 
-            ? `Do you want to hide the original sound "${sound.name}"?` 
+          const confirmMsg = sound.isSynth
+            ? `Do you want to hide the original sound "${sound.name}"?`
             : `Do you want to delete the uploaded sound "${sound.name}"?`;
-          if (confirm(confirmMsg)) {
+          if (await confirmDialog(confirmMsg)) {
             deleteCustomSound(sound.id, wrapper);
           }
         });
+
+        const volumeWrap = document.createElement('div');
+        volumeWrap.className = 'sound-volume-control';
+        volumeWrap.title = 'Volume';
+        const volumeIcon = document.createElement('i');
+        volumeIcon.setAttribute('data-lucide', 'volume-2');
+        const volumeSlider = document.createElement('input');
+        volumeSlider.type = 'range';
+        volumeSlider.min = '0';
+        volumeSlider.max = '100';
+        volumeSlider.value = String(sound.volume ?? 100);
+        volumeSlider.className = 'sound-volume-slider';
+        volumeSlider.setAttribute('aria-label', `Volume for ${sound.name}`);
+        volumeSlider.addEventListener('click', (e) => e.stopPropagation());
+        volumeSlider.addEventListener('change', (e) => {
+          e.stopPropagation();
+          updateSoundVolume(sound.id, Number(volumeSlider.value));
+        });
+        volumeWrap.appendChild(volumeIcon);
+        volumeWrap.appendChild(volumeSlider);
 
         actions.appendChild(editBtn);
         actions.appendChild(deleteBtn);
         wrapper.appendChild(btn);
         wrapper.appendChild(actions);
+        wrapper.appendChild(volumeWrap);
         elSoundboardUnifiedGrid.appendChild(wrapper);
       });
     }
@@ -2956,6 +3817,25 @@ async function renameCustomSound(id, newName, labelEl) {
   }
 }
 
+async function updateSoundVolume(id, volume) {
+  try {
+    const r = await fetch(`/api/soundboard/sounds/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ volume })
+    });
+    const result = await r.json();
+    if (result.success) {
+      const match = customSounds.find(s => s.id === id);
+      if (match) match.volume = volume;
+    } else {
+      showToast('Error saving volume.', true);
+    }
+  } catch (err) {
+    showToast('Connection error.', true);
+  }
+}
+
 async function deleteCustomSound(id, wrapperEl) {
   try {
     const r = await fetch(`/api/soundboard/sounds/${encodeURIComponent(id)}`, {
@@ -2978,14 +3858,14 @@ async function deleteCustomSound(id, wrapperEl) {
 }
 
 function populateDrawerSoundSelect() {
-  if (!elSoundSelect) return;
-  elSoundSelect.innerHTML = '<option value="">-- Select Sound --</option>';
-
-  customSounds.forEach(sound => {
-    const opt = document.createElement('option');
-    opt.value = sound.id;
-    opt.textContent = sound.isSynth ? `Synth: ${sound.name}` : `Uploaded Sound: ${sound.name}`;
-    elSoundSelect.appendChild(opt);
+  document.querySelectorAll('[data-role="sound-select"]').forEach(sel => {
+    sel.innerHTML = '<option value="">-- Select Sound --</option>';
+    customSounds.forEach(sound => {
+      const opt = document.createElement('option');
+      opt.value = sound.id;
+      opt.textContent = sound.isSynth ? `Synth: ${sound.name}` : `Uploaded Sound: ${sound.name}`;
+      sel.appendChild(opt);
+    });
   });
 }
 
@@ -3018,14 +3898,9 @@ elSoundFileInput.addEventListener('change', (e) => {
 async function uploadSoundboardFile(file) {
   const formData = new FormData();
   formData.append('sound', file);
-  
-  showToast('Uploading audio...');
+
   try {
-    const response = await fetch('/api/soundboard/upload', {
-      method: 'POST',
-      body: formData
-    });
-    const result = await response.json();
+    const result = await uploadWithProgress('/api/soundboard/upload', formData, elSoundUploadProgress);
     if (result.success) {
       showToast('Audio uploaded successfully!');
       loadSoundboardCustomSounds();
@@ -3035,6 +3910,58 @@ async function uploadSoundboardFile(file) {
   } catch (err) {
     showToast('Error uploading audio', true);
   }
+}
+
+// -------------------------------------------------------------
+// DEVICE PAIRING MODAL + CONFIG TAB PIN DISPLAY
+// -------------------------------------------------------------
+// isRetry=true means a previously-submitted PIN was rejected (we already had
+// one stored when the socket closed with 4001 again) — show the inline error.
+function showPairingModal(isRetry = false) {
+  elPairingError.classList.toggle('hidden', !isRetry);
+  elPairingModal.classList.remove('hidden');
+  elPairingPinInput.focus();
+}
+
+if (elPairingForm) {
+  elPairingForm.addEventListener('submit', () => {
+    const pin = elPairingPinInput.value.trim();
+    if (!pin) return;
+    setStoredPin(pin);
+    elPairingModal.classList.add('hidden');
+    connectWebSocket();
+  });
+}
+
+// Device Pairing section in the Config tab — only resolves for the host
+// machine itself; remote devices get a 401 and we just show a dash.
+async function loadPairingPin() {
+  if (!elPairingPinDisplay) return;
+  try {
+    const res = await fetch('/api/security/pin');
+    if (!res.ok) {
+      elPairingPinDisplay.textContent = '------';
+      return;
+    }
+    const data = await res.json();
+    elPairingPinDisplay.textContent = data.pin;
+  } catch (e) {
+    elPairingPinDisplay.textContent = '------';
+  }
+}
+
+if (elBtnRegeneratePin) {
+  elBtnRegeneratePin.addEventListener('click', async () => {
+    try {
+      const res = await fetch('/api/security/pin/regenerate', { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to regenerate PIN');
+      const data = await res.json();
+      elPairingPinDisplay.textContent = data.pin;
+      showToast('New pairing PIN generated. Paired devices will need to re-enter it.');
+    } catch (e) {
+      showToast('Could not regenerate PIN.', true);
+    }
+  });
 }
 
 // -------------------------------------------------------------
@@ -3082,17 +4009,17 @@ elBtnSaveProfileSettings.addEventListener('click', () => {
   showToast('Profile updated!');
 });
 
-elBtnDeleteProfile.addEventListener('click', () => {
+elBtnDeleteProfile.addEventListener('click', async () => {
   const keys = Object.keys(profiles);
   if (keys.length <= 1) {
     showToast('Cannot delete the only existing profile!', true);
     return;
   }
-  
-  if (!confirm(`Delete profile "${profiles[currentProfileId].name}"?`)) {
+
+  if (!(await confirmDialog(`Delete profile "${profiles[currentProfileId].name}"?`))) {
     return;
   }
-  
+
   delete profiles[currentProfileId];
   const nextProfileId = Object.keys(profiles)[0];
   
@@ -3136,7 +4063,7 @@ if (elBtnTwitchGetToken) {
 
 if (elBtnTwitchDisconnect) {
   elBtnTwitchDisconnect.addEventListener('click', async () => {
-    if (!confirm('Do you want to disconnect your Twitch account?')) return;
+    if (!(await confirmDialog('Do you want to disconnect your Twitch account?'))) return;
     try {
       const response = await fetch('/api/twitch/disconnect', { method: 'POST' });
       const result = await response.json();
@@ -3513,8 +4440,8 @@ async function finishSetupWizard() {
 }
 
 if (elWizBtnSkip) {
-  elWizBtnSkip.addEventListener('click', () => {
-    if (confirm('Do you want to skip the initial configuration? You can set up connections later.')) {
+  elWizBtnSkip.addEventListener('click', async () => {
+    if (await confirmDialog('Do you want to skip the initial configuration? You can set up connections later.')) {
       finishSetupWizard();
     }
   });

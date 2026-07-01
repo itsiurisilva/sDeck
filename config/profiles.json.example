@@ -290,6 +290,41 @@
           "actionData": {
             "command": "powershell -c \"(New-Object -ComObject WScript.Shell).SendKeys([char]174)\""
           }
+        },
+        "3-3": {
+          "label": "Mic Volume",
+          "icon": "",
+          "image": null,
+          "color": "#00f0ff",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#00f0ff",
+          "colSpan": 1,
+          "rowSpan": 1,
+          "widgetType": "knob",
+          "actionType": "obs",
+          "actionData": {
+            "command": "SetInputVolume",
+            "params": { "inputName": "Mic/Aux", "inputVolumeMul": 0.5 },
+            "value": 50
+          }
+        },
+        "3-4": {
+          "label": "Mic Mute",
+          "icon": "mic",
+          "image": null,
+          "color": "#ff7d00",
+          "iconColor": "#ffffff",
+          "textColor": "#ffffff",
+          "glowColor": "#ffffff",
+          "colSpan": 1,
+          "rowSpan": 1,
+          "widgetType": "switch",
+          "actionType": "obs",
+          "actionData": {
+            "command": "ToggleInputMute",
+            "params": { "inputName": "Mic/Aux" }
+          }
         }
       },
       "favorites": [

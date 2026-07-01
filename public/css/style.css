@@ -17,7 +17,14 @@
   --success: #10b981;
   --danger: #ef4444;
   --warning: #f59e0b;
-  
+
+  /* Aliases used by toast/edit-mode/OBS-active-scene glow effects */
+  --accent-gold: var(--warning);
+  --accent-gold-glow: rgba(245, 158, 11, 0.5);
+  --accent-red: var(--danger);
+  --accent-red-glow: rgba(239, 68, 68, 0.5);
+  --accent-green-glow: rgba(16, 185, 129, 0.5);
+
   --btn-radius: 16px;
   --shadow-keycap: 0 8px 16px -2px rgba(0, 0, 0, 0.7), 
                    inset 0 1px 1px 0 rgba(255, 255, 255, 0.2),
@@ -37,6 +44,7 @@
 
 body {
   font-family: 'Outfit', sans-serif;
+  line-height: 1.5;
   background-color: #04060f;
   background-image: 
     radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 45%),
@@ -45,9 +53,15 @@ body {
   background-attachment: fixed;
   color: var(--text-main);
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   position: relative;
   user-select: none;
+  /* Prevents mobile browsers' pull-to-refresh / rubber-band overscroll
+     navigation from firing when a drag (e.g. the knob widget) starts near
+     a scroll boundary — that gesture reloading/navigating the page is
+     exactly what read as "the page jumps" while adjusting a knob. */
+  overscroll-behavior: none;
 }
 
 /* Scrollbars */
@@ -85,6 +99,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   max-width: 100%;
   width: 100%;
   margin: 0 auto;
@@ -103,7 +118,42 @@ body {
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-glass);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  transition: transform 0.25s ease;
 }
+
+/* Auto-hide Header: only while actually using the deck (not editing, not on
+   another tab) — the header is taken out of flow and slid off-screen, and
+   the hover zone below lets the mouse pull it back into view on demand. */
+.header-hover-zone {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 12px;
+  z-index: 50;
+}
+
+body.auto-hide-header.deck-tab-active:not(.edit-mode-active) .header-hover-zone {
+  display: block;
+}
+
+body.auto-hide-header.deck-tab-active:not(.edit-mode-active) .app-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 51;
+  transform: translateY(-100%);
+}
+
+body.auto-hide-header.deck-tab-active:not(.edit-mode-active).header-peek .app-header {
+  transform: translateY(0);
+}
+
+/* .main-workspace is flex:1 inside .app-container, so once .app-header is
+   taken out of flow (position:absolute above) it naturally fills the full
+   height — no fixed-height override needed here. */
 
 .header-left {
   display: flex;
@@ -133,17 +183,41 @@ body {
   50%       { opacity: 0.45; transform: scale(0.8); }
 }
 
+.logo-link {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  text-decoration: none;
+}
+
+.logo-icon {
+  height: 34px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(139, 92, 246, 0.35));
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.logo-link:hover .logo-icon {
+  transform: scale(1.06);
+}
+
+.logo-link:hover .app-logo {
+  filter: brightness(1.1);
+}
+
 .app-logo {
-  font-size: 1.5rem;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.95rem;
   font-weight: 800;
   letter-spacing: -0.025em;
-  background: linear-gradient(135deg, #ffffff 40%, #cbd5e1);
+  background: linear-gradient(135deg, #a78bfa, #8b5cf6);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .app-logo span {
-  background: linear-gradient(135deg, #60a5fa, #a78bfa);
+  background: linear-gradient(135deg, #ffffff, #f1f5f9);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -199,6 +273,11 @@ body {
   animation: blink-dot 1.2s infinite ease-in-out;
 }
 
+@keyframes blink-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.82); }
+}
+
 .record-badge {
   background: rgba(244, 63, 94, 0.15);
   border-color: rgba(244, 63, 94, 0.45);
@@ -232,11 +311,18 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  min-width: 0;
 }
 
-.tab-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-main);
+@media (hover: hover) and (pointer: fine) {
+  .tab-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-main);
+  }
+}
+
+.tab-btn:active {
+  transform: scale(0.94);
 }
 
 .tab-btn.active {
@@ -254,15 +340,20 @@ body {
 /* Main Workspace layout */
 .main-workspace {
   flex: 1;
+  min-height: 0;
   overflow: hidden;
   position: relative;
-  height: calc(100vh - 80px);
 }
 
 .tab-content {
   display: none;
   height: 100%;
   animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .tab-content.active {
@@ -290,6 +381,7 @@ body {
   display: flex;
   gap: 0.5rem;
   overflow-x: auto;
+  overscroll-behavior: contain;
   scrollbar-width: none;
 }
 
@@ -309,10 +401,12 @@ body {
   white-space: nowrap;
 }
 
-.profile-tab:hover {
-  background: rgba(255, 255, 255, 0.07);
-  color: var(--text-main);
-  border-color: var(--border-glass-focus);
+@media (hover: hover) and (pointer: fine) {
+  .profile-tab:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text-main);
+    border-color: var(--border-glass-focus);
+  }
 }
 
 .profile-tab.active {
@@ -335,10 +429,18 @@ body {
   justify-content: center;
 }
 
-.add-profile-btn:hover {
-  border-color: var(--primary);
-  color: var(--text-main);
-  background: rgba(255,255,255,0.04);
+@media (hover: hover) and (pointer: fine) {
+  .add-profile-btn:hover {
+    border-color: var(--primary);
+    color: var(--text-main);
+    background: rgba(255,255,255,0.04);
+    transform: translateY(-2px) rotate(90deg);
+    box-shadow: 0 6px 14px -3px var(--primary-glow);
+  }
+}
+
+.add-profile-btn:active {
+  transform: translateY(0) rotate(90deg) scale(0.9);
 }
 
 /* Edit Switch */
@@ -347,6 +449,13 @@ body {
   align-items: center;
   gap: 0.60rem;
   cursor: pointer;
+}
+
+.toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
 }
 
 .toggle-label {
@@ -405,7 +514,7 @@ input:checked + .toggle-slider:before {
 .deck-workspace {
   display: flex;
   flex: 1;
-  height: calc(100% - 68px);
+  min-height: 0;
   position: relative;
   overflow: hidden;
 }
@@ -418,6 +527,7 @@ input:checked + .toggle-slider:before {
   align-items: center;
   padding: 2rem;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 /* Favorites Layout (Larger targets) */
@@ -430,7 +540,7 @@ input:checked + .toggle-slider:before {
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border-glass);
   border-radius: 20px;
-  padding: 0.8rem 1.25rem;
+  padding: 1rem 1.25rem;
   box-shadow: 0 8px 30px -2px rgba(0, 0, 0, 0.5);
   width: 100%;
   max-width: 100%;
@@ -485,6 +595,16 @@ input:checked + .toggle-slider:before {
 .favorites-slot:hover {
   border-color: rgba(255, 255, 255, 0.35);
   background: rgba(255, 255, 255, 0.04);
+  transform: translateY(-3px);
+}
+
+.favorites-slot.has-action:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: var(--shadow-keycap), 0 12px 22px -6px rgba(0, 0, 0, 0.6);
+}
+
+.favorites-slot:active {
+  transform: translateY(1px) scale(0.97);
 }
 
 .favorites-slot.has-action {
@@ -539,7 +659,7 @@ input:checked + .toggle-slider:before {
 /* Deck Grid (Enlarged) */
 .deck-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1.25rem;
   width: 100%;
   max-width: 100%;
@@ -565,6 +685,7 @@ input:checked + .toggle-slider:before {
   padding: 0.75rem;
   cursor: pointer;
   position: relative;
+  min-width: 0;
   overflow: hidden;
   width: 100%;
   height: 100%;
@@ -605,18 +726,20 @@ input:checked + .toggle-slider:before {
   transition: opacity 0.2s, height 0.2s;
 }
 
-.deck-btn:hover {
-  border-color: rgba(255, 255, 255, 0.25);
-  transform: translateY(-4px);
-  box-shadow: 0 16px 28px -4px rgba(0, 0, 0, 0.75),
-              0 0 0 1px rgba(255, 255, 255, 0.06),
-              inset 0 1px 2px rgba(255, 255, 255, 0.2),
-              inset 0 -4px 8px rgba(0, 0, 0, 0.4);
-}
+@media (hover: hover) and (pointer: fine) {
+  .deck-btn:hover {
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-4px);
+    box-shadow: 0 16px 28px -4px rgba(0, 0, 0, 0.75),
+                0 0 0 1px rgba(255, 255, 255, 0.06),
+                inset 0 1px 2px rgba(255, 255, 255, 0.2),
+                inset 0 -4px 8px rgba(0, 0, 0, 0.4);
+  }
 
-.deck-btn:hover.has-action::before {
-  opacity: 0.9;
-  height: 5px;
+  .deck-btn:hover.has-action::before {
+    opacity: 0.9;
+    height: 5px;
+  }
 }
 
 .deck-btn:active {
@@ -767,6 +890,89 @@ input:checked + .toggle-slider:before {
   opacity: 0.7;
 }
 
+/* ================================================================
+   PAD WIDGET: SWITCH
+   ================================================================ */
+.deck-btn.widget-switch .switch-track {
+  width: 44px;
+  height: 24px;
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-glass);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+  position: relative;
+  margin-top: 0.35rem;
+  flex-shrink: 0;
+}
+
+.deck-btn.widget-switch .switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #f1f5f9, #cbd5e1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.deck-btn.widget-switch.switch-on .switch-track {
+  background: var(--btn-glow-color, var(--success));
+  border-color: var(--btn-glow-color, var(--success));
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 10px var(--btn-glow-color-glow, var(--accent-green-glow));
+}
+
+.deck-btn.widget-switch.switch-on .switch-thumb {
+  transform: translateX(20px);
+}
+
+/* ================================================================
+   PAD WIDGET: KNOB
+   ================================================================ */
+.deck-btn.widget-knob {
+  --knob-percent: 50;
+}
+
+.knob-dial {
+  width: 62%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.1), transparent 60%),
+    conic-gradient(var(--btn-glow-color, var(--neon-cyan)) calc(var(--knob-percent) * 1%), rgba(255, 255, 255, 0.08) 0);
+  box-shadow: var(--shadow-keycap), 0 0 14px var(--btn-glow-color-glow, var(--neon-cyan-glow));
+  transition: box-shadow 0.15s ease;
+  touch-action: none;
+  cursor: ns-resize;
+}
+
+.knob-dial::before {
+  content: '';
+  position: absolute;
+  inset: 14%;
+  border-radius: 50%;
+  background: linear-gradient(145deg, rgba(28, 38, 56, 0.9) 0%, rgba(14, 20, 32, 0.95) 100%);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.knob-value-label {
+  position: relative;
+  z-index: 2;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--text-main);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.deck-btn.widget-knob:hover .knob-dial {
+  box-shadow: var(--shadow-keycap), 0 0 20px var(--btn-glow-color-glow, var(--neon-cyan-glow));
+}
+
 /* Resize corner handle - Large glowing diagonal stripes */
 .deck-btn-resize-handle {
   position: absolute;
@@ -854,15 +1060,26 @@ input:checked + .toggle-slider:before {
   color: var(--text-muted);
   font-size: 1.75rem;
   cursor: pointer;
+  border-radius: 8px;
+  line-height: 1;
 }
 
-.close-btn:hover {
-  color: var(--text-main);
+@media (hover: hover) and (pointer: fine) {
+  .close-btn:hover {
+    color: var(--text-main);
+    background: rgba(239, 68, 68, 0.12);
+    transform: scale(1.12) rotate(90deg);
+  }
+}
+
+.close-btn:active {
+  transform: scale(0.92) rotate(90deg);
 }
 
 .drawer-body {
   padding: 1.5rem;
   overflow-y: auto;
+  overscroll-behavior: contain;
   flex: 1;
 }
 
@@ -908,6 +1125,46 @@ input:checked + .toggle-slider:before {
 .form-group select:focus {
   border-color: var(--primary);
   box-shadow: 0 0 8px var(--primary-glow);
+}
+
+.form-group input[type="text"]:hover,
+.form-group input[type="number"]:hover,
+.form-group input[type="password"]:hover,
+.form-group textarea:hover,
+.form-group select:hover {
+  border-color: var(--border-glass-focus);
+}
+
+/* Standalone .glass-input usage (buttons, badges, inputs outside .form-group) */
+.glass-input {
+  background: var(--bg-input);
+  border: 1px solid var(--border-glass);
+  border-radius: 10px;
+  color: var(--text-main);
+  padding: 0.8rem 1rem;
+  font-size: 1rem;
+  font-weight: 500;
+  outline: none;
+}
+
+.glass-input:hover {
+  border-color: var(--border-glass-focus);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.glass-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 8px var(--primary-glow);
+}
+
+button.glass-input:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.5);
+}
+
+button.glass-input:active {
+  transform: translateY(1px) scale(0.97);
+  box-shadow: none;
 }
 
 .icon-help {
@@ -976,9 +1233,22 @@ input:checked + .toggle-slider:before {
   color: white;
 }
 
-.primary-btn:hover {
-  background: var(--primary-hover);
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+@media (hover: hover) and (pointer: fine) {
+  .primary-btn:hover {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px -4px rgba(59, 130, 246, 0.5);
+  }
+}
+
+.primary-btn:active {
+  transform: translateY(1px) scale(0.97);
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.35);
+}
+
+.primary-btn:focus-visible {
+  outline: none;
+  animation: neon-pulse-cyan 1.6s ease-in-out infinite;
 }
 
 .danger-btn {
@@ -986,9 +1256,17 @@ input:checked + .toggle-slider:before {
   color: white;
 }
 
-.danger-btn:hover {
-  background: #dc2626;
-  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);
+@media (hover: hover) and (pointer: fine) {
+  .danger-btn:hover {
+    background: #dc2626;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px -4px rgba(239, 68, 68, 0.45);
+  }
+}
+
+.danger-btn:active {
+  transform: translateY(1px) scale(0.97);
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
 }
 
 /* ==================== TAB 2: OVERLAYS & CONFIGS (Readability focus) ==================== */
@@ -1011,17 +1289,31 @@ input:checked + .toggle-slider:before {
 
 @media (max-width: 1024px) {
   .col-6 { grid-column: span 12; }
-  .deck-grid { grid-template-columns: repeat(4, 1fr); }
+  .deck-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
+/* Unified elevated-glass-panel treatment — every .card (with or without the
+   now-redundant .glass modifier) reads as the same panel system app-wide. */
 .card {
+  position: relative;
+  overflow: hidden;
   border-radius: 20px;
   padding: 1.75rem;
-  box-shadow: 0 12px 30px -5px rgba(0, 0, 0, 0.6);
-  background: var(--bg-card);
-  border: 1px solid var(--border-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 12px 35px -5px rgba(0, 0, 0, 0.6);
+  background: rgba(10, 15, 30, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
 }
 
 .card-header {
@@ -1103,8 +1395,10 @@ input:checked + .toggle-slider:before {
   gap: 6px;
 }
 
-.spotify-login-btn:hover {
-  box-shadow: 0 6px 16px rgba(29, 185, 84, 0.4);
+@media (hover: hover) and (pointer: fine) {
+  .spotify-login-btn:hover {
+    box-shadow: 0 6px 16px rgba(29, 185, 84, 0.4);
+  }
 }
 
 .info-box {
@@ -1157,6 +1451,8 @@ input:checked + .toggle-slider:before {
   text-decoration: none;
   font-family: monospace;
   font-weight: 600;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .overlay-link:hover {
@@ -1229,6 +1525,12 @@ input:checked + .toggle-slider:before {
   color: var(--text-dim);
   text-align: center;
   padding: 30px;
+  animation: emptyStateFadeIn 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes emptyStateFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .log-item {
@@ -1237,8 +1539,14 @@ input:checked + .toggle-slider:before {
   justify-content: space-between;
   padding: 0.8rem 1.2rem;
   border-bottom: 1px solid var(--border-glass);
+  border-left: 3px solid transparent;
   font-size: 0.9rem;
   background: rgba(0,0,0,0.2);
+}
+
+.log-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-left-color: var(--primary);
 }
 
 .log-item-left {
@@ -1317,9 +1625,11 @@ input:checked + .toggle-slider:before {
   gap: 6px;
 }
 
-.mute-btn:hover {
-  background: rgba(255,255,255,0.12);
-  border-color: var(--border-glass-focus);
+@media (hover: hover) and (pointer: fine) {
+  .mute-btn:hover {
+    background: rgba(255,255,255,0.12);
+    border-color: var(--border-glass-focus);
+  }
 }
 
 .mute-btn.active-muted {
@@ -1368,9 +1678,13 @@ input:checked + .toggle-slider:before {
   align-items: center;
 }
 
-.obs-scene-item:hover {
-  border-color: var(--border-glass-focus);
-  background: rgba(255, 255, 255, 0.03);
+@media (hover: hover) and (pointer: fine) {
+  .obs-scene-item:hover {
+    border-color: var(--border-glass-focus);
+    background: rgba(255, 255, 255, 0.03);
+    transform: translateX(3px);
+    box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.5);
+  }
 }
 
 .obs-scene-item.active-scene {
@@ -1391,6 +1705,7 @@ input:checked + .toggle-slider:before {
   font-size: 0.9rem;
   padding: 40px;
   font-weight: 500;
+  animation: emptyStateFadeIn 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Toast Notifications */
@@ -1453,9 +1768,12 @@ input:checked + .toggle-slider:before {
   
   .connection-status {
     gap: 0.3rem;
+    flex-wrap: wrap;
+    row-gap: 0.25rem;
   }
-  
+
   .status-indicator {
+    min-width: 0;
     padding: 0.2rem 0.5rem;
     font-size: 0.65rem;
     gap: 0.3rem;
@@ -1484,15 +1802,43 @@ input:checked + .toggle-slider:before {
     height: 14px;
   }
   
-  /* Topbar inside deck tab */
+  /* Topbar inside deck tab — simplified stacked mobile layout instead of
+     cramming the desktop single-row toolbar into a narrow viewport. */
   .deck-top-bar {
-    padding: 0.5rem 1rem;
-    flex-direction: row;
+    padding: 0.5rem 0.75rem;
+    flex-direction: column;
+    align-items: stretch;
     gap: 0.5rem;
   }
-  
+
+  .profiles-nav {
+    min-width: 0;
+    justify-content: space-between;
+  }
+
   .profiles-tabs {
-    max-width: 60vw;
+    max-width: none;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .toggle-group {
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .profile-action-container {
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .profile-io-btn-label {
+    display: none;
+  }
+
+  .profile-io-btn {
+    padding: 0.32rem 0.5rem;
   }
   
   .profile-tab {
@@ -1501,10 +1847,19 @@ input:checked + .toggle-slider:before {
     border-radius: 8px;
   }
   
-  .add-profile-btn {
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
+  .add-profile-btn, .profile-settings-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+
+  .obs-source-visibility-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .mod-actions-grid {
+    gap: 0.6rem;
   }
 
   .toggle-label {
@@ -1535,6 +1890,10 @@ input:checked + .toggle-slider:before {
   .deck-grid-container {
     padding: 0.75rem;
     height: auto;
+    /* justify-content:center clips unreachable content above the scroll
+       area once the grid (with many auto-sized rows) overflows — start
+       from the top instead so everything stays scrollable into view. */
+    justify-content: flex-start;
   }
   
   /* Favorites bar compression on mobile */
@@ -1551,9 +1910,21 @@ input:checked + .toggle-slider:before {
   
   .favorites-slots {
     gap: 8px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
   }
-  
+
+  .favorites-slots::-webkit-scrollbar {
+    display: none;
+  }
+
   .favorites-slot {
+    flex: 0 0 auto;
+    width: 96px;
+    max-width: none;
     height: 52px;
     border-radius: 10px;
     padding: 0 4px;
@@ -1570,8 +1941,16 @@ input:checked + .toggle-slider:before {
     height: 100%;
   }
   
-  /* Deck Buttons scaled on touch screens */
+  /* Deck Buttons scaled on touch screens — override the per-profile column/row
+     count (set inline by JS from the saved profile config) so buttons stay a
+     legible size on phones regardless of how many columns/rows were
+     configured on desktop. Buttons only carry `grid-column/row: span N`
+     (no explicit line placement), so CSS grid auto-flow re-packs them
+     cleanly into fewer columns instead of overlapping or clipping. */
   .deck-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    grid-template-rows: none !important;
+    grid-auto-rows: minmax(64px, auto) !important;
     gap: 0.5rem;
   }
   
@@ -1595,6 +1974,7 @@ input:checked + .toggle-slider:before {
   .editor-drawer {
     width: 100%;
     height: 70vh;
+    max-height: calc(100dvh - 2rem);
     position: fixed;
     bottom: 0;
     left: 0;
@@ -1609,6 +1989,11 @@ input:checked + .toggle-slider:before {
   .editor-drawer.hidden {
     transform: translateY(100%);
     position: fixed;
+    top: auto;
+    right: auto;
+    left: 0;
+    bottom: 0;
+    pointer-events: none;
   }
   
   .editor-drawer:not(.hidden) {
@@ -1623,6 +2008,98 @@ input:checked + .toggle-slider:before {
   .card {
     padding: 1.25rem;
     border-radius: 16px;
+  }
+}
+
+/* ==================== SMALL PHONES (Below 420px) ==================== */
+@media (max-width: 420px) {
+  .connection-status {
+    flex-wrap: wrap;
+    row-gap: 0.25rem;
+  }
+
+  .app-logo {
+    font-size: 1.05rem;
+  }
+
+  .deck-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-rows: none !important;
+    grid-auto-rows: minmax(56px, auto) !important;
+    gap: 0.4rem;
+  }
+
+  .deck-btn-label {
+    font-size: 0.7rem;
+  }
+
+  .deck-btn-icon svg, .deck-btn-icon i {
+    width: 24px;
+    height: 24px;
+  }
+
+  .favorites-slot {
+    width: 78px;
+    height: 46px;
+    padding: 0 3px;
+    font-size: 0.68rem;
+  }
+
+  .favorites-slot .deck-btn-icon {
+    width: 15px;
+    height: 15px;
+  }
+
+  .icon-picker-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .cfg-section-desc {
+    display: none;
+  }
+}
+
+/* ==================== LANDSCAPE / SHORT VIEWPORTS ==================== */
+@media (max-height: 480px) and (orientation: landscape) {
+  .app-header {
+    padding: 0.4rem 0.75rem;
+    gap: 0.4rem;
+  }
+
+  .app-logo {
+    font-size: 1rem;
+  }
+
+  .status-indicator {
+    padding: 0.1rem 0.35rem;
+    font-size: 0.6rem;
+  }
+
+  .tab-btn {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.78rem;
+  }
+
+  .deck-top-bar {
+    padding: 0.35rem 0.75rem;
+  }
+
+  .deck-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    grid-template-rows: none !important;
+    grid-auto-rows: minmax(44px, auto) !important;
+  }
+
+  .editor-drawer {
+    height: 88vh;
+  }
+
+  .chat-iframe-wrapper {
+    height: 40vh;
+  }
+
+  .mod-panel-card {
+    max-height: 45vh;
   }
 }
 
@@ -1649,28 +2126,6 @@ input:checked + .toggle-slider:before {
   50% { box-shadow: 0 0 20px rgba(255, 0, 127, 0.5), inset 0 0 10px rgba(255, 0, 127, 0.3); }
 }
 
-/* Base card improvements */
-.card.glass {
-  background: rgba(10, 15, 30, 0.7);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 12px 35px -5px rgba(0, 0, 0, 0.6);
-  border-radius: 20px;
-  position: relative;
-  overflow: hidden;
-}
-
-.card.glass::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
-}
-
 /* Tab contents adjustments */
 .tab-content {
   padding: 1.5rem 2rem;
@@ -1681,6 +2136,9 @@ input:checked + .toggle-slider:before {
 #tab-overlays {
   padding: 0;
   overflow: hidden;
+}
+
+#tab-overlays.active {
   display: flex;
   flex-direction: column;
 }
@@ -1705,11 +2163,18 @@ input:checked + .toggle-slider:before {
   justify-content: center;
 }
 
-.profile-settings-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--neon-cyan);
-  border-color: var(--neon-cyan);
-  box-shadow: 0 0 8px var(--neon-cyan-glow);
+@media (hover: hover) and (pointer: fine) {
+  .profile-settings-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--neon-cyan);
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 8px var(--neon-cyan-glow);
+    transform: translateY(-2px) rotate(45deg);
+  }
+}
+
+.profile-settings-btn:active {
+  transform: translateY(0) rotate(45deg) scale(0.92);
 }
 
 /* Modal Overlay & Card */
@@ -1722,17 +2187,23 @@ input:checked + .toggle-slider:before {
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  animation: fadeIn 0.2s ease-out;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.2s ease-out, visibility 0s linear 0s;
 }
 
 .modal-card {
   width: 90%;
   max-width: 450px;
+  max-height: min(90vh, 90dvh);
   background: var(--bg-app);
   border: 1px solid var(--border-glass-focus);
   box-shadow: 0 20px 45px rgba(0, 0, 0, 0.8), 0 0 25px var(--neon-cyan-glow);
   border-radius: 20px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .modal-header {
@@ -1741,6 +2212,7 @@ input:checked + .toggle-slider:before {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .modal-header h3 {
@@ -1754,6 +2226,10 @@ input:checked + .toggle-slider:before {
 
 .modal-body {
   padding: 1.5rem;
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
 }
 
 .modal-footer {
@@ -1762,6 +2238,7 @@ input:checked + .toggle-slider:before {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
+  flex-shrink: 0;
 }
 
 /* --- Spotify Advanced Controller --- */
@@ -1960,7 +2437,10 @@ input:checked + .toggle-slider:before {
 .sound-section-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: 0.75rem;
+  grid-auto-rows: min-content;
+  align-items: start;
+  gap: 0.75rem 0.75rem;
+  row-gap: 1.1rem;
 }
 
 .soundboard-btn {
@@ -2006,7 +2486,8 @@ input:checked + .toggle-slider:before {
 }
 
 .soundboard-btn:active {
-  transform: translateY(1px);
+  transform: translateY(1px) scale(0.95);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .soundboard-btn svg, .soundboard-btn i {
@@ -2171,7 +2652,7 @@ input:checked + .toggle-slider:before {
   overflow: hidden;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 768px) {
   .chat-mod-container {
     grid-template-columns: 1fr;
     grid-template-rows: 55vh auto;
@@ -2209,6 +2690,7 @@ input:checked + .toggle-slider:before {
   gap: 0.7rem;
   height: 100%;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .mod-actions-grid {
@@ -2242,31 +2724,41 @@ input:checked + .toggle-slider:before {
   flex-shrink: 0;
 }
 
-.mod-btn:hover {
-  background: rgba(255,255,255,0.06);
-  color: var(--text-main);
-  transform: translateY(-1px);
+@media (hover: hover) and (pointer: fine) {
+  .mod-btn:hover {
+    background: rgba(255,255,255,0.06);
+    color: var(--text-main);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px -4px rgba(0, 0, 0, 0.5);
+  }
 }
 
-.mod-btn.clear-btn:hover {
-  color: #ff9999;
-  border-color: rgba(239, 68, 68, 0.4);
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.15);
+.mod-btn:active {
+  transform: translateY(0) scale(0.96);
+  box-shadow: none;
 }
 
-.mod-btn.sub-mode-btn:hover {
-  color: #c084fc;
-  border-color: rgba(168, 85, 247, 0.4);
-}
+@media (hover: hover) and (pointer: fine) {
+  .mod-btn.clear-btn:hover {
+    color: #ff9999;
+    border-color: rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.15);
+  }
 
-.mod-btn.emote-mode-btn:hover {
-  color: #60a5fa;
-  border-color: rgba(96, 165, 250, 0.4);
-}
+  .mod-btn.sub-mode-btn:hover {
+    color: #c084fc;
+    border-color: rgba(168, 85, 247, 0.4);
+  }
 
-.mod-btn.ad-btn:hover {
-  color: #fbbf24;
-  border-color: rgba(251, 191, 36, 0.4);
+  .mod-btn.emote-mode-btn:hover {
+    color: #60a5fa;
+    border-color: rgba(96, 165, 250, 0.4);
+  }
+
+  .mod-btn.ad-btn:hover {
+    color: #fbbf24;
+    border-color: rgba(251, 191, 36, 0.4);
+  }
 }
 
 /* Mod external link cards */
@@ -2291,11 +2783,13 @@ input:checked + .toggle-slider:before {
   font-size: 0.85rem;
 }
 
-.mod-link-card:hover {
-  background: rgba(157, 78, 221, 0.1);
-  border-color: #c084fc;
-  box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
-  color: #f3e8ff;
+@media (hover: hover) and (pointer: fine) {
+  .mod-link-card:hover {
+    background: rgba(157, 78, 221, 0.1);
+    border-color: #c084fc;
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
+    color: #f3e8ff;
+  }
 }
 
 /* --- OBS Tab Source List --- */
@@ -2327,6 +2821,8 @@ input:checked + .toggle-slider:before {
 
 .obs-source-item:hover {
   border-color: var(--border-glass-focus);
+  background: rgba(255, 255, 255, 0.04);
+  transform: translateX(3px);
 }
 
 .obs-source-item.disabled {
@@ -2401,8 +2897,18 @@ input:checked + .toggle-slider:before {
 }
 
 /* ==================== FIX: MODAL CLOSE ==================== */
+/* Stays flex-rendered (like .editor-drawer.hidden) so opacity/transform can
+   actually animate out instead of vanishing instantly via display:none. */
 .modal-overlay.hidden {
-  display: none !important;
+  display: flex !important;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease-out, visibility 0s linear 0.2s;
+}
+
+.modal-overlay.hidden .modal-card {
+  transform: scale(0.94);
 }
 
 /* ==================== CONFIG TAB: COLLAPSIBLE SECTIONS ==================== */
@@ -2411,6 +2917,7 @@ input:checked + .toggle-slider:before {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
   padding: 1.25rem 1.75rem;
   display: flex;
   flex-direction: column;
@@ -2431,6 +2938,8 @@ input:checked + .toggle-slider:before {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   padding: 1rem 1.5rem;
   cursor: pointer;
   user-select: none;
@@ -2855,7 +3364,7 @@ details.cfg-subsection[open] > summary .cfg-sub-chevron {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  margin-bottom: 0.45rem;
+  margin-bottom: 0.65rem;
 }
 .macro-step-num {
   min-width: 20px;
@@ -2940,13 +3449,30 @@ details.cfg-subsection[open] > summary .cfg-sub-chevron {
 /* ================================================================
    FEATURE: TWITCH CHAT TIMER INDICATOR
    ================================================================ */
-.deck-btn.chat-timer-active {
+.deck-btn.chat-timer-active,
+.favorites-slot.chat-timer-active {
   animation: chat-timer-pulse 1.5s ease-in-out infinite;
   border-color: #a78bfa !important;
+  position: relative;
 }
 @keyframes chat-timer-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(167,139,250,0); }
   50%       { box-shadow: 0 0 0 5px rgba(167,139,250,0.35); }
+}
+
+.chat-timer-badge {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(124, 58, 237, 0.85);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 5px;
+  border-radius: 8px;
+  z-index: 5;
+  pointer-events: none;
 }
 
 /* ================================================================
@@ -3043,7 +3569,8 @@ details.cfg-subsection[open] > summary .cfg-sub-chevron {
 /* Soundboard Unified Card Styling */
 .custom-sound-wrapper {
   position: relative;
-  display: inline-block;
+  display: flex;
+  flex-direction: column;
   width: 100%;
 }
 
@@ -3099,8 +3626,220 @@ details.cfg-subsection[open] > summary .cfg-sub-chevron {
   height: 12px;
 }
 
+.sound-volume-control {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 4px 0;
+  margin-top: 4px;
+}
+
+.sound-volume-control i, .sound-volume-control svg {
+  width: 11px;
+  height: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* Fully custom track + thumb instead of the native OS control: the browser's
+   default range thumb (accent-color) can render much taller than this 4px
+   track, so at high values it visually bled up over the button/row above. */
+.sound-volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 4px;
+  min-width: 0;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  outline: none;
+}
+
+.sound-volume-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.sound-volume-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.sound-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--neon-cyan, var(--primary));
+  box-shadow: 0 0 4px var(--neon-cyan-glow, rgba(0, 240, 255, 0.6));
+  cursor: pointer;
+}
+
+.sound-volume-slider::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border: none;
+  border-radius: 50%;
+  background: var(--neon-cyan, var(--primary));
+  box-shadow: 0 0 4px var(--neon-cyan-glow, rgba(0, 240, 255, 0.6));
+  cursor: pointer;
+}
+
+.upload-progress-bar {
+  width: 100%;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.upload-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--neon-cyan, var(--primary));
+  transition: width 0.15s ease;
+}
+
 .upload-drop-zone-mini:hover {
   background: rgba(255, 255, 255, 0.08) !important;
   border-color: var(--neon-cyan) !important;
   transform: translateY(-1px);
+}
+
+/* --- Buy Me a Coffee / Support Widget --- */
+.cfg-support-widget {
+  margin: 0 auto 1.5rem auto;
+  max-width: 1200px;
+  width: 100%;
+  border-radius: 16px;
+  background: rgba(30, 27, 75, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.18);
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cfg-support-widget:hover {
+  border-color: rgba(139, 92, 246, 0.3);
+  background: rgba(30, 27, 75, 0.25);
+}
+
+.support-toggle-btn {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.support-toggle-btn:hover {
+  color: var(--text-main);
+}
+
+.support-toggle-btn i[data-lucide="coffee"], 
+.support-toggle-btn svg {
+  color: #fbbf24;
+  filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.4));
+  transition: transform 0.3s ease;
+}
+
+.support-toggle-btn:hover i[data-lucide="coffee"] {
+  transform: rotate(10deg) scale(1.1);
+}
+
+.support-chevron {
+  margin-left: auto;
+  width: 16px;
+  height: 16px;
+  color: var(--text-dim);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.support-toggle-btn.active .support-chevron {
+  transform: rotate(180deg);
+}
+
+.support-qr-panel {
+  padding: 1.25rem;
+  border-top: 1px solid rgba(139, 92, 246, 0.1);
+  background: rgba(10, 10, 18, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease;
+  max-height: 500px;
+  opacity: 1;
+  overflow: hidden;
+}
+
+.support-qr-panel.hidden {
+  display: none !important;
+  max-height: 0;
+  opacity: 0;
+  padding: 0;
+  border-top-color: transparent;
+}
+
+.support-content {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+  max-width: 560px;
+  width: 100%;
+}
+
+.support-qr-image {
+  width: 220px;
+  height: 220px;
+  border-radius: 14px;
+  background: white;
+  padding: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.support-qr-image:hover {
+  transform: scale(1.05);
+}
+
+.support-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.support-text h4 {
+  font-size: 1.05rem;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.support-text p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+@media (max-width: 600px) {
+  .support-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
 }
