@@ -12,7 +12,7 @@
 
 **Host sDeck on your main computer and control OBS, Spotify, Twitch, and your PC from any device on your Wi-Fi network — no specialized hardware required.**
 
-[**Quick Start**](#-quick-start) · [**Features**](#-features) · [**Screenshots**](#-screenshots) · [**Configuration**](#️-configuration) · [**Integrations**](#-integrations) · [**Overlays**](#-stream-overlays)
+[**Quick Start**](#-quick-start) · [**Features**](#-features) · [**Actions & Widgets**](#-button-actions--widgets) · [**Screenshots**](#-screenshots) · [**Configuration**](#️-configuration) · [**Integrations**](#-integrations) · [**Overlays**](#-stream-overlays)
 
 <br/>
 
@@ -29,14 +29,44 @@
 | | |
 |---|---|
 | 🖥️ **Fully Self-Hosted** | Runs entirely on your local machine — no cloud, no subscription, no external server. |
-| 📱 **Any Device, Instant Access** | Open the deck on any phone, tablet, or secondary screen connected to your Wi-Fi. |
+| 📱 **Any Device, Instant Access** | Fully touch-optimized UI — open the deck on any phone, tablet, or secondary screen on your Wi-Fi and it's just as usable as on the host PC. |
+| 🔒 **Secure Pairing** | The host PC never needs a password; every other device must enter a PIN once before it can control your deck. |
 | 🎮 **OBS Studio Control** | Switch scenes, toggle sources, control streams & recording via WebSocket v5. |
-| 🎵 **Spotify Integration** | Real-time now playing, play/pause, skip tracks, and volume control. |
-| 💬 **Twitch Chat Macros** | Send announcements and automate chat messages mid-stream. |
+| 🎵 **Spotify Integration** | Real-time now playing, play/pause, skip tracks, and volume control (including a drag-to-adjust knob). |
+| 💬 **Twitch Chat & Moderation** | Chat macros plus a full moderation panel — clear chat, sub-only/emote-only, slow mode, followers-only, timeouts, bans, and raids. |
 | 🔔 **Streamlabs Alerts** | Trigger alert screens and sounds from live events in real time. |
-| ⚡ **Custom Commands** | Chain PowerShell / CMD scripts, app launchers, and OBS actions into one button. |
-| 🎙️ **Soundboard** | Instant local sound effects triggered directly from the deck. |
+| 🎛️ **10 Action Types** | OBS commands, system/PowerShell, profile switching, soundboard, multi-step macros, clipboard, Twitch chat, Spotify volume, open URL, and webhooks — see [Button Actions & Widgets](#-button-actions--widgets). |
+| 🖼️ **Custom Icons or Images** | Pick from a searchable icon library or upload your own image per button, with independent background/icon/text/glow colors. |
+| 📐 **Multiple Profiles & Favorites** | Unlimited profiles with independently configurable grid size (up to 10×8), a pinned Favorites bar, and JSON import/export. |
+| 🎙️ **Soundboard** | Upload your own clips or use built-in synth effects, with per-sound volume. |
 | **Reason** | This deck was initially developed for https://www.twitch.tv/samuca2835 my favorite Streamer/Friend ❤️ |
+
+---
+
+## 🎛️ Button Actions & Widgets
+
+Every pad can be one of three **widget types**:
+
+| Widget | Behavior |
+|:-------|:---------|
+| **Button** | Standard press-to-trigger pad. |
+| **Switch** | ON/OFF toggle — fires one action when turned on, a different one when turned off. |
+| **Knob** | Drag up/down to set a live value (volume-type actions only). |
+
+...and its **action** can be any of:
+
+| Action | What it does |
+|:-------|:-------------|
+| **OBS Command** | Switch scenes, toggle mute, toggle stream/recording, toggle source visibility, set input volume, or send a custom OBS WebSocket request. |
+| **System** | Run a shell command, PowerShell script, or launch an app on the host PC. |
+| **Switch Profile** | Jump to a different deck layout. |
+| **Play Sound** | Trigger a soundboard clip. |
+| **Macro** | Chain multiple actions together, each with its own delay. |
+| **Copy to Clipboard** | Copies text to the host PC's clipboard. |
+| **Send to Twitch Chat** | Posts a message to chat, optionally on a repeating timer. |
+| **Spotify Volume** | Set — or, on a Knob, drag — Spotify's playback volume. |
+| **Open URL** | Opens a link in the host's default browser. |
+| **Webhook** | Fires a GET/POST HTTP request (e.g. a Discord webhook) with an optional JSON body. |
 
 ---
 
