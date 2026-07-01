@@ -4,6 +4,16 @@
   "description": "Unified Streamer Deck and OBS Overlays Control application",
   "main": "server.js",
   "type": "module",
+  "license": "MIT",
+  "author": "Iuri Silva",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/itsiurisilva/sDeck.git"
+  },
+  "homepage": "https://github.com/itsiurisilva/sDeck#readme",
+  "bugs": {
+    "url": "https://github.com/itsiurisilva/sDeck/issues"
+  },
   "scripts": {
     "start": "node server.js",
     "lint": "eslint .",
