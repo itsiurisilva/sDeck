@@ -34,6 +34,10 @@ Both must pass. If you touch `public/index.html`, `public/css/style.css`, or `pu
 
 Use the issue templates — they ask for just enough detail (steps to reproduce, environment) to act on a report without back-and-forth.
 
+## Code of Conduct
+
+This project follows a [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you're expected to uphold it.
+
 ## License
 
 By contributing, you agree your contribution is licensed under the project's [MIT License](LICENSE).
