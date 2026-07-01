@@ -64,6 +64,10 @@ http://localhost:3000
 
 > The launcher automatically installs dependencies, generates config templates, and opens your dashboard on first run.
 
+**4 — Pair your phone or another device**
+
+The host PC never needs a PIN, but any other device joining over Wi-Fi does. On the host, open **Config → Device Pairing** to see the PIN, then enter `http://<your-pc-ip>:3000` (also printed in the terminal on launch) on the other device and type it in when prompted. You can regenerate the PIN at any time from the same panel.
+
 ---
 
 ## 📸 Screenshots
@@ -168,6 +172,14 @@ Add these as **Browser Sources** in OBS Studio:
 | **Socials Ticker** | `http://localhost:3000/overlays/Social Bar.dc.html` | 1920 × 66 |
 | **Spotify Music Disc** | `http://localhost:3000/overlays/Now Playing - Disc.dc.html` | 350 × 100 |
 | **Spotify Music Bars** | `http://localhost:3000/overlays/Now Playing - Bars.dc.html` | 380 × 120 |
+| **Follower Alert** | `http://localhost:3000/overlays/Follower Alert.dc.html` | 1920 × 1080 |
+| **Sub Alert** | `http://localhost:3000/overlays/Sub Alert.dc.html` | 1920 × 1080 |
+| **Donation Alert** | `http://localhost:3000/overlays/Donation Alert.dc.html` | 1920 × 1080 |
+| **Camera Frame** | `http://localhost:3000/overlays/Camera Frame.dc.html` | 1920 × 1080 |
+| **Live Badge** | `http://localhost:3000/overlays/Live Badge.dc.html` | 1920 × 1080 |
+| **Viewer Count** | `http://localhost:3000/overlays/Viewer Count.dc.html` | 1920 × 1080 |
+
+> Alert/badge overlays are full-canvas — their graphics are positioned within the 1920×1080 frame, so add the Browser Source at that size with a transparent background rather than cropping it.
 
 ---
 
