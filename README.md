@@ -1,101 +1,105 @@
 <div align="center">
 
-  <!-- Logo -->
-  <img src="Gallery/logo_light.png" alt="sDeck Logo" width="320" style="border-radius: 8px; margin-bottom: 12px;" />
+<img src="Gallery/Icon/sdeck-wordmark.png" alt="sDeck" width="380"/>
 
-  # sDeck
+<br/><br/>
 
-  ### A Sleek, Low-Latency Web-Based Stream Deck & Overlay System for OBS, Spotify, Twitch, and Streamlabs
+[![Node Version](https://img.shields.io/badge/Node.js-%3E%3D%2018.0.0-22c55e?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![OBS WebSocket](https://img.shields.io/badge/OBS%20WebSocket-v5.x-ef4444?style=flat-square&logo=obs-studio&logoColor=white)](https://obsproject.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-8b5cf6?style=flat-square)](https://opensource.org/licenses/MIT)
+[![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-f97316?style=flat-square)](https://makeapullrequest.com)
+[![Self Hosted](https://img.shields.io/badge/Self--Hosted-No%20Cloud%20Required-3b82f6?style=flat-square)](https://github.com/itsiurisilva/sDeck)
 
-  [![Node Version](https://img.shields.io/badge/Node.js-%3E%3D%2018.0.0-20c050?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
-  [![OBS WebSocket](https://img.shields.io/badge/OBS%20WebSocket-v5.x-e04040?style=flat-square&logo=obs-studio&logoColor=white)](https://obsproject.com/)
-  [![License: MIT](https://img.shields.io/badge/License-MIT-3080f0.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-  [![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-9030e0.svg?style=flat-square)](https://makeapullrequest.com)
+**Host sDeck on your main computer and control OBS, Spotify, Twitch, and your PC from any device on your Wi-Fi network — no specialized hardware required.**
 
-  *Transform any smartphone, tablet, or web browser into a custom Stream Deck controller, while serving beautiful retro-themed, realtime HTML overlays directly to OBS Studio.*
+[**Quick Start**](#-quick-start) · [**Features**](#-features) · [**Screenshots**](#-screenshots) · [**Configuration**](#️-configuration) · [**Integrations**](#-integrations) · [**Overlays**](#-stream-overlays)
 
-  <br/>
-  
-  <!-- Interface Preview -->
-  <img src="Gallery/stream_deck.png" alt="sDeck Stream Deck Interface" width="90%" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);" />
+<br/>
 
-  <br/><br/>
-
-  [Features](#features) • [Screenshots](#screenshots) • [Quick Start](#quick-start) • [Configuration](#configuration) • [Stream Overlays](#stream-overlays) • [Troubleshooting](#troubleshooting)
+<img src="Gallery/stream_deck.png" alt="sDeck Stream Deck Interface" width="92%"/>
 
 </div>
 
----
-
-## Features
-
-*   **Fully Self-Hosted & Local**: Runs completely on your local machine. No external servers or cloud accounts required.
-*   **Multi-Device Wi-Fi Access**: Host on your streaming PC and open the deck interface on any phone, tablet, or laptop via your local network.
-*   **Absolute PC & System Command**: Control Windows/Linux system volume, launch applications, trigger a local soundboard, or execute custom scripts.
-*   **Custom Commands & Macros (PowerShell / CMD)**: Create, edit, and chain custom actions. Write PowerShell scripts, CMD commands, OBS requests, or Twitch chat macros to execute complex workflows with a single button press.
-*   **OBS Studio Control**: Native WebSocket v5 integration to switch scenes, toggle sources, toggle streams/recording, and mute audio inputs.
-*   **Companion API Integrations (Optional)**: Seamless secondary integrations with **Spotify** (now playing details, play, pause, volume, track progress), **Streamlabs** (realtime alerts and live events), and **Twitch Chat** (chat macro announcements).
-
----
-
-## Screenshots
-
-<details>
-<summary>Click to expand dashboard screenshots</summary>
 <br/>
 
-### Stream Deck Interface
-![Stream Deck Interface](Gallery/stream_deck.png)
+---
 
-### Chat & Quick Moderation
-![Chat & Quick Moderation](Gallery/chat_moderation.png)
+## ✨ Features
 
-### Soundboard & Sound Effects
-![Soundboard & Sound Effects](Gallery/soundboard.png)
-
-### Connection & Credentials Panel
-![Connection & Credentials Panel](Gallery/configuration.png)
-
-</details>
+| | |
+|---|---|
+| 🖥️ **Fully Self-Hosted** | Runs entirely on your local machine — no cloud, no subscription, no external server. |
+| 📱 **Any Device, Instant Access** | Open the deck on any phone, tablet, or secondary screen connected to your Wi-Fi. |
+| 🎮 **OBS Studio Control** | Switch scenes, toggle sources, control streams & recording via WebSocket v5. |
+| 🎵 **Spotify Integration** | Real-time now playing, play/pause, skip tracks, and volume control. |
+| 💬 **Twitch Chat Macros** | Send announcements and automate chat messages mid-stream. |
+| 🔔 **Streamlabs Alerts** | Trigger alert screens and sounds from live events in real time. |
+| ⚡ **Custom Commands** | Chain PowerShell / CMD scripts, app launchers, and OBS actions into one button. |
+| 🎙️ **Soundboard** | Instant local sound effects triggered directly from the deck. |
+| **Reason** | This deck was initially developed for https://www.twitch.tv/samuca2835 my favorite Streamer/Friend ❤️ |
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
-sDeck is designed to bootstrap itself in a single step, automatically installing dependencies and generating template configurations.
+> **Requires** [Node.js](https://nodejs.org/) v18 or higher.
 
-### Prerequisites
-*   [Node.js](https://nodejs.org/) (LTS version 18+ recommended).
-
-### Launching sDeck
-Choose the appropriate script for your Operating System:
-
-#### Windows
-Double-click `INICIAR.bat` in the root folder.
-
-#### macOS / Linux
-Open your terminal inside the project directory and run:
+**1 — Clone the repository**
 ```bash
-chmod +x start.sh
-./start.sh
+git clone https://github.com/itsiurisilva/sDeck.git
+cd sDeck
 ```
 
-*The launcher will automatically configure environment files, install NPM packages, boot the server, and open your web dashboard at `http://localhost:3000`.*
+**2 — Launch**
+
+| OS | How |
+|:---|:----|
+| **Windows** | Double-click `INICIAR.bat` |
+| **macOS / Linux** | `chmod +x start.sh && ./start.sh` |
+
+**3 — Open the dashboard**
+```
+http://localhost:3000
+```
+
+> The launcher automatically installs dependencies, generates config templates, and opens your dashboard on first run.
 
 ---
 
-## Configuration
+## 📸 Screenshots
 
-Your private credentials, tokens, and button mappings are kept out of version control using local template copies.
+<table>
+  <tr>
+    <td align="center"><b>Stream Deck</b></td>
+    <td align="center"><b>Chat & Moderation</b></td>
+  </tr>
+  <tr>
+    <td><img src="Gallery/stream_deck.png" alt="Stream Deck" width="100%"/></td>
+    <td><img src="Gallery/chat_moderation.png" alt="Chat & Moderation" width="100%"/></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Soundboard</b></td>
+    <td align="center"><b>Credentials & Config</b></td>
+  </tr>
+  <tr>
+    <td><img src="Gallery/soundboard.png" alt="Soundboard" width="100%"/></td>
+    <td><img src="Gallery/configuration.png" alt="Configuration" width="100%"/></td>
+  </tr>
+</table>
 
-### Configuration Files
-On first startup, sDeck generates the following files in the root and `/config` directories:
-*   `.env` — Manages the local server port and overlay social media handles.
-*   `config/settings.json` — Stores OBS WebSocket credentials, Twitch tokens, and Spotify developer keys.
-*   `config/profiles.json` — Saves your grid sizes, button layouts, labels, actions, and custom triggers.
+---
 
-### Editing Social Handles in `.env`
-Open the `.env` file in your root folder and replace the placeholders to update the handles displayed on the overlays:
+## ⚙️ Configuration
+
+On first launch, sDeck generates three local config files:
+
+| File | Purpose |
+|:-----|:--------|
+| `.env` | Server port + overlay social handles |
+| `config/settings.json` | OBS, Twitch & Spotify credentials |
+| `config/profiles.json` | Button layouts, labels, actions & grid sizes |
+
+**Set your social handles in `.env`:**
 ```env
 PORT=3000
 TWITCH_USERNAME=your_twitch_channel
@@ -107,58 +111,94 @@ YOUTUBE_HANDLE=@your_youtube
 
 ---
 
-## External Integrations
+## 🔌 Integrations
 
-### 1. OBS Studio (WebSocket v5.x)
-1. Open OBS Studio and navigate to **Tools** -> **WebSocket Server Settings**.
-2. Enable the WebSocket server (default port: `4455`).
-3. Set a **Server Password** (recommended).
-4. Enter the Port and Password in the sDeck Dashboard under **OBS Settings**.
+<details>
+<summary><b>🎬 OBS Studio (WebSocket v5.x)</b></summary>
+<br/>
 
-### 2. Spotify API Developer App (Optional)
-1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
-2. Click **Create app**:
-    *   **App name**: `sDeck Controller`
-    *   **Redirect URI**: `http://127.0.0.1:3000/callback` (or your custom port, ending with `/callback`).
-3. Save and copy the **Client ID** and **Client Secret**.
-4. In the sDeck Dashboard, enter these credentials in the Spotify settings wizard and click **Connect**.
+1. In OBS, go to **Tools → WebSocket Server Settings**
+2. Enable the server (default port: `4455`)
+3. Set a server password
+4. Enter the port + password in sDeck's **Config** panel
+
+</details>
+
+<details>
+<summary><b>🎵 Spotify API (Optional)</b></summary>
+<br/>
+
+1. Open [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) → **Create app**
+2. Set the Redirect URI to `http://127.0.0.1:3000/callback`
+3. Copy your **Client ID** and **Client Secret** into sDeck's Spotify settings wizard
 
 > [!WARNING]
-> **Spotify Redirect Requirement**: Spotify enforces a strict security policy that bans `localhost` redirect URLs for development. You **must** use `http://127.0.0.1:[PORT]/callback` in both your Spotify Developer Dashboard and sDeck.
+> Spotify bans `localhost` redirect URLs. You **must** use `http://127.0.0.1` — and the port must match `PORT` in your `.env`.
 
-### 3. Twitch IRC (Optional)
-To send chat announcements or macros:
-1. Generate an OAuth chat token at [Twitchapps TMI Generator](https://twitchapps.com/tmi/).
-2. Paste the token (beginning with `oauth:`) and your Twitch username into sDeck's settings.
+</details>
 
-### 4. Streamlabs Alerts (Optional)
-To trigger alert screens and sounds:
-1. Go to [Streamlabs API Settings -> API Tokens](https://streamlabs.com/dashboard#/settings/api-settings).
-2. Copy the **Socket API Token** (starts with `eyJ...`).
-3. Paste the token into sDeck's settings.
+<details>
+<summary><b>💬 Twitch IRC (Optional)</b></summary>
+<br/>
 
----
+1. Generate a token at [Twitchapps TMI Generator](https://twitchapps.com/tmi/)
+2. Paste the token (starting with `oauth:`) and your Twitch username into sDeck's Twitch settings
 
-## Stream Overlays
+</details>
 
-Add these URLs as **Browser Sources** in OBS Studio:
+<details>
+<summary><b>🔔 Streamlabs Alerts (Optional)</b></summary>
+<br/>
 
-| Overlay Name | URL | Recommended Width | Recommended Height |
-| :--- | :--- | :--- | :--- |
-| **Top Info Bar** | `http://localhost:3000/overlays/Top Bar.dc.html` | `1920` | `80` |
-| **Socials Ticker** | `http://localhost:3000/overlays/Social Bar.dc.html` | `1920` | `66` |
-| **Spotify Music Disc** | `http://localhost:3000/overlays/Now Playing - Disc.dc.html` | `350` | `100` |
-| **Spotify Music Bars** | `http://localhost:3000/overlays/Now Playing - Bars.dc.html` | `380` | `120` |
+1. Go to [Streamlabs API Settings → API Tokens](https://streamlabs.com/dashboard#/settings/api-settings)
+2. Copy the **Socket API Token** (starts with `eyJ...`)
+3. Paste it into sDeck's Streamlabs settings
+
+</details>
 
 ---
 
-## Troubleshooting
+## 📡 Stream Overlays
 
-### Spotify returns `INVALID_CLIENT` or `redirect_uri_mismatch`
-*   **Fix**: Verify that you are using `http://127.0.0.1:3000/callback` in the Spotify Developer Dashboard. Ensure it matches the address shown in the sDeck setup page exactly. Do not use `localhost` in the Spotify Developer settings.
+Add these as **Browser Sources** in OBS Studio:
 
-### Server fails to bind to port (`EADDRINUSE`)
-*   **Fix**: If port `3000` is already in use by another application, open `.env` and change `PORT=3000` to a different port (e.g. `PORT=4000`). Remember to update your Spotify Developer Dashboard Redirect URI to match (e.g. `http://127.0.0.1:4000/callback`).
+| Overlay | URL | Size |
+|:--------|:----|:-----|
+| **Top Info Bar** | `http://localhost:3000/overlays/Top Bar.dc.html` | 1920 × 80 |
+| **Socials Ticker** | `http://localhost:3000/overlays/Social Bar.dc.html` | 1920 × 66 |
+| **Spotify Music Disc** | `http://localhost:3000/overlays/Now Playing - Disc.dc.html` | 350 × 100 |
+| **Spotify Music Bars** | `http://localhost:3000/overlays/Now Playing - Bars.dc.html` | 380 × 120 |
 
-### OBS connection state is disconnected
-*   **Fix**: Check that OBS Studio is open, WebSocket Server is enabled under *Tools -> WebSocket Server Settings*, and the port/password match what you entered in the dashboard settings.
+---
+
+## 🔧 Troubleshooting
+
+<details>
+<summary><b>Spotify: <code>INVALID_CLIENT</code> or <code>redirect_uri_mismatch</code></b></summary>
+<br/>
+
+Verify the Redirect URI in your [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) is **exactly** `http://127.0.0.1:3000/callback`. Do not use `localhost`. The port must match the value of `PORT` in your `.env`.
+
+</details>
+
+<details>
+<summary><b>Port already in use (<code>EADDRINUSE</code>)</b></summary>
+<br/>
+
+Change `PORT=3000` to a free port in `.env` (e.g. `PORT=4000`). If using Spotify, update its Developer Dashboard Redirect URI to match the new port.
+
+</details>
+
+<details>
+<summary><b>OBS shows as disconnected</b></summary>
+<br/>
+
+Confirm OBS Studio is open, WebSocket Server is enabled under **Tools → WebSocket Server Settings**, and the port + password match exactly what you entered in sDeck's Config panel.
+
+</details>
+
+---
+
+<div align="center">
+<sub>Made with ❤️ &nbsp;·&nbsp; MIT License &nbsp;·&nbsp; <a href="https://github.com/itsiurisilva/sDeck">github.com/itsiurisilva/sDeck</a></sub>
+</div>

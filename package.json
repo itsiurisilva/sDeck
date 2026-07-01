@@ -9,6 +9,27 @@
     "lint": "eslint .",
     "test": "node --test"
   },
+  "keywords": [
+    "stream-deck",
+    "streamdeck",
+    "stream-companion",
+    "elgato-alternative",
+    "obs-controller",
+    "obs-studio",
+    "obs-websocket",
+    "self-hosted",
+    "open-source",
+    "soundboard",
+    "twitch",
+    "spotify",
+    "streaming-tools",
+    "diy-stream-deck",
+    "nodejs",
+    "local-server",
+    "stream-overlay",
+    "pc-controller",
+    "free-stream-deck"
+  ],
   "dependencies": {
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
