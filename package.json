@@ -57,5 +57,8 @@
     "eslint": "^10.6.0",
     "globals": "^17.7.0",
     "vitepress": "^1.6.4"
+  },
+  "overrides": {
+    "vite": "^6.4.3"
   }
 }
