@@ -12,7 +12,7 @@
 
 **Host sDeck on your main computer and control OBS, Spotify, Twitch, and your PC from any device on your Wi-Fi network — no specialized hardware required.**
 
-[**Quick Start**](#-quick-start) · [**Features**](#-features) · [**Actions & Widgets**](#-button-actions--widgets) · [**Screenshots**](#-screenshots) · [**Configuration**](#️-configuration) · [**Integrations**](#-integrations) · [**Overlays**](#-stream-overlays)
+[**Quick Start**](#-quick-start) · [**Features**](#-features) · [**Actions & Widgets**](#-button-actions--widgets) · [**Screenshots**](#-screenshots) · [**Configuration**](#️-configuration) · [**Integrations**](#-integrations) · [**Overlays**](#-stream-overlays) · [**Full Documentation**](https://itsiurisilva.github.io/sDeck/)
 
 <br/>
 

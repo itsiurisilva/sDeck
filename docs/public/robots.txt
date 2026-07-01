@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://itsiurisilva.github.io/sDeck/sitemap.xml

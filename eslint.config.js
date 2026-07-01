@@ -37,6 +37,6 @@ export default [
     }
   },
   {
-    ignores: ['node_modules/**', 'public/uploads/**', '_backup_old/**']
+    ignores: ['node_modules/**', 'public/uploads/**', '_backup_old/**', 'docs/.vitepress/cache/**', 'docs/.vitepress/dist/**']
   }
 ];
