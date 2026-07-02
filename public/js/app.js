@@ -640,11 +640,9 @@ function updateTwitchIrcBars() {
 async function executeMacro(steps) {
   if (!steps || steps.length === 0) return;
   for (const step of steps) {
-    let delay = Number(step.delay) || 0;
-    if (delay < 0) delay = 0;
-    if (delay > 60000) delay = 60000;
-    if (delay > 0) {
-      await new Promise(resolve => setTimeout(resolve, delay));
+    const rawDelay = Number(step.delay);
+    if (Number.isFinite(rawDelay) && rawDelay > 0 && rawDelay <= 60000) {
+      await new Promise(resolve => setTimeout(resolve, rawDelay));
     }
     if (step.type === 'nav') {
       const target = step.data?.targetProfile;
@@ -1133,10 +1131,12 @@ function populateSpotifyForm() {
       if (spotifyUser && elSpotifyProfileBox) {
         elSpotifyProfileBox.classList.remove('hidden');
         if (elSpotifyAvatar) {
-          const avatarUrl = spotifyUser.images?.[0]?.url;
-          elSpotifyAvatar.src = (typeof avatarUrl === 'string' && SAFE_URL_RE.test(avatarUrl))
-            ? avatarUrl
-            : 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
+          let avatarUrl = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
+          const rawAvatarUrl = spotifyUser.images?.[0]?.url;
+          if (typeof rawAvatarUrl === 'string' && SAFE_URL_RE.test(rawAvatarUrl)) {
+            avatarUrl = rawAvatarUrl;
+          }
+          elSpotifyAvatar.src = avatarUrl;
         }
         if (elSpotifyUsername) elSpotifyUsername.textContent = spotifyUser.display_name || spotifyUser.id || 'Spotify User';
       } else if (elSpotifyProfileBox) {
@@ -1651,13 +1651,14 @@ function renderGrid() {
     return;
   }
 
-  // Clamped to match the server-side bound in lib/validators.js's isValidProfile.
-  let rows = Number(activeProfile.rows) || 3;
-  if (rows < 1) rows = 1;
-  if (rows > 20) rows = 20;
-  let cols = Number(activeProfile.cols) || 5;
-  if (cols < 1) cols = 1;
-  if (cols > 20) cols = 20;
+  // Bounded to match the server-side range in lib/validators.js's isValidProfile;
+  // falls back to the default grid size for anything outside that range.
+  let rows = 3;
+  const rawRows = Number(activeProfile.rows);
+  if (Number.isInteger(rawRows) && rawRows >= 1 && rawRows <= 20) rows = rawRows;
+  let cols = 5;
+  const rawCols = Number(activeProfile.cols);
+  if (Number.isInteger(rawCols) && rawCols >= 1 && rawCols <= 20) cols = rawCols;
 
   elDeckGrid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
   elDeckGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
@@ -2235,7 +2236,10 @@ function openEditorDrawer(row, col, btnData) {
 
     // Image state
     if (hasImage) {
-      const imgSrc = (typeof btnData.image === 'string' && SAFE_URL_RE.test(btnData.image)) ? btnData.image : '';
+      let imgSrc = '';
+      if (typeof btnData.image === 'string' && SAFE_URL_RE.test(btnData.image)) {
+        imgSrc = btnData.image;
+      }
       elBtnImageUrl.value = imgSrc;
       elBtnImagePreview.src = imgSrc;
       elBtnImagePreviewContainer.style.display = '';
