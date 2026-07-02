@@ -49,8 +49,16 @@ export default defineConfig({
     ]
   ],
 
+  transformPageData(pageData) {
+    const canonicalPath = pageData.relativePath
+      .replace(/index\.md$/, '')
+      .replace(/\.md$/, '');
+    pageData.frontmatter.head ??= [];
+    pageData.frontmatter.head.push(['link', { rel: 'canonical', href: `${hostname}${canonicalPath}` }]);
+  },
+
   themeConfig: {
-    logo: '/sdeck-icon-128.png',
+    logo: { src: '/sdeck-icon-128.png', alt: 'sDeck logo' },
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
       { text: 'GitHub', link: 'https://github.com/itsiurisilva/sDeck' }
