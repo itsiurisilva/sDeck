@@ -684,7 +684,7 @@ function renderMacroSteps() {
   elMacroStepsList.innerHTML = '';
 
   if (macroSteps.length === 0) {
-    elMacroStepsList.innerHTML = '<div class="macro-empty-hint">Sem etapas. Adiciona uma abaixo.</div>';
+    elMacroStepsList.innerHTML = '<div class="macro-empty-hint">No steps yet. Add one below.</div>';
     return;
   }
 
@@ -697,9 +697,9 @@ function renderMacroSteps() {
         <select class="macro-step-type-sel glass-input">
           <option value="obs"${step.type==='obs'?' selected':''}>OBS</option>
           <option value="sound"${step.type==='sound'?' selected':''}>Sound</option>
-          <option value="system"${step.type==='system'?' selected':''}>Sistema</option>
-          <option value="nav"${step.type==='nav'?' selected':''}>Mudar Perfil</option>
-          <option value="clipboard"${step.type==='clipboard'?' selected':''}>Copiar Texto</option>
+          <option value="system"${step.type==='system'?' selected':''}>System</option>
+          <option value="nav"${step.type==='nav'?' selected':''}>Switch Profile</option>
+          <option value="clipboard"${step.type==='clipboard'?' selected':''}>Copy Text</option>
         </select>
         <button class="macro-step-del" data-idx="${idx}">✕ Remove</button>
       </div>
