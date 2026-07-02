@@ -17,16 +17,22 @@ function escapeHtml(value) {
   }[ch]));
 }
 
-// Allows same-origin/relative paths and http(s)/data-image URLs; rejects javascript:/data:text/html
-// and protocol-relative "//host" URLs (which browsers resolve to an arbitrary external origin).
-function isSafeImageUrl(url) {
-  return typeof url === 'string' && (
-    url.startsWith('https://') ||
-    url.startsWith('http://') ||
-    (url.startsWith('/') && !url.startsWith('//')) ||
-    url.startsWith('./') ||
-    url.startsWith('data:image/')
-  );
+// Button images only ever come from our own /uploads/ endpoint (see the upload handler),
+// so only same-origin relative paths are legitimate. Rejects protocol-relative "//host"
+// URLs (which browsers resolve to an arbitrary external origin) and any external URL.
+function isRelativePath(url) {
+  return typeof url === 'string' && url.startsWith('/') && !url.startsWith('//');
+}
+
+// Spotify profile images are only ever served from Spotify's own image CDN.
+function isSpotifyImageUrl(url) {
+  if (typeof url !== 'string') return false;
+  try {
+    const { protocol, hostname } = new URL(url);
+    return protocol === 'https:' && (hostname === 'scdn.co' || hostname.endsWith('.scdn.co'));
+  } catch {
+    return false;
+  }
 }
 
 // profiles is a plain object keyed by profile id; if currentProfileId were ever set to
@@ -1146,7 +1152,7 @@ function populateSpotifyForm() {
         if (elSpotifyAvatar) {
           let avatarUrl = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
           const rawAvatarUrl = spotifyUser.images?.[0]?.url;
-          if (isSafeImageUrl(rawAvatarUrl)) {
+          if (isSpotifyImageUrl(rawAvatarUrl)) {
             avatarUrl = rawAvatarUrl;
           }
           elSpotifyAvatar.src = avatarUrl;
@@ -2250,7 +2256,7 @@ function openEditorDrawer(row, col, btnData) {
     // Image state
     if (hasImage) {
       let imgSrc = '';
-      if (isSafeImageUrl(btnData.image)) {
+      if (isRelativePath(btnData.image)) {
         imgSrc = btnData.image;
       }
       elBtnImageUrl.value = imgSrc;
