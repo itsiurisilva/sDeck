@@ -10,6 +10,35 @@ let macroSteps = []; // live macro steps being edited
 let activeChatTimers = new Map(); // key: "row_col", value: intervalId
 let twitchIrcConnected = false;
 
+// Escapes a value for safe interpolation into an innerHTML template literal.
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
+
+// Allows same-origin/relative paths and http(s) URLs; rejects javascript:/data:text/html etc.
+function isSafeUrl(url) {
+  if (typeof url !== 'string' || !url) return false;
+  if (url.startsWith('/') || url.startsWith('./') || url.startsWith('data:image/')) return true;
+  try {
+    return ['http:', 'https:'].includes(new URL(url, window.location.origin).protocol);
+  } catch {
+    return false;
+  }
+}
+
+// profiles is a plain object keyed by profile id; if currentProfileId were ever set to
+// "__proto__" (e.g. via a "Switch Profile" action's targetProfile field in an imported
+// profiles.json), `profiles[currentProfileId]` would resolve to Object.prototype itself,
+// and later property writes on it would pollute Object.prototype globally.
+const UNSAFE_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+function setCurrentProfileId(id) {
+  if (typeof id === 'string' && !UNSAFE_OBJECT_KEYS.has(id)) {
+    currentProfileId = id;
+  }
+}
+
 // -------------------------------------------------------------
 // DEVICE PAIRING (PIN required for any non-local device)
 // -------------------------------------------------------------
@@ -388,7 +417,7 @@ function updateLivePreview() {
       if (customIcons[name]) {
         elPreviewIconEl.innerHTML = customIcons[name];
       } else {
-        elPreviewIconEl.innerHTML = `<i data-lucide="${icon}"></i>`;
+        elPreviewIconEl.innerHTML = `<i data-lucide="${escapeHtml(icon)}"></i>`;
         lucide.createIcons({ nodes: [elPreviewIconEl] });
       }
     } else {
@@ -510,7 +539,7 @@ if (elImportProfilesInput) {
       if (!(await confirmDialog(`Import ${Object.keys(data.profiles).length} profile(s)? Current profiles will be replaced.`))) return;
       profiles = data.profiles;
       if (data.activeProfile && profiles[data.activeProfile]) {
-        currentProfileId = data.activeProfile;
+        setCurrentProfileId(data.activeProfile);
       }
       socket.send(JSON.stringify({ type: 'save_profiles', profiles, activeProfile: currentProfileId }));
       showToast('Profiles imported successfully!');
@@ -619,13 +648,14 @@ function updateTwitchIrcBars() {
 async function executeMacro(steps) {
   if (!steps || steps.length === 0) return;
   for (const step of steps) {
-    if (step.delay > 0) {
-      await new Promise(resolve => setTimeout(resolve, step.delay));
+    const delay = Math.min(Math.max(Number(step.delay) || 0, 0), 60000);
+    if (delay > 0) {
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
     if (step.type === 'nav') {
       const target = step.data?.targetProfile;
       if (target && profiles[target]) {
-        currentProfileId = target;
+        setCurrentProfileId(target);
         renderProfilesTabs();
         renderGrid();
       }
@@ -665,7 +695,7 @@ function renderMacroSteps() {
       <div class="macro-step-params" id="macro-params-${idx}"></div>
       <div class="macro-step-delay-row">
         <span>Wait</span>
-        <input type="number" class="glass-input macro-delay-input" value="${step.delay || 0}" min="0" step="100" data-idx="${idx}">
+        <input type="number" class="glass-input macro-delay-input" value="${escapeHtml(step.delay || 0)}" min="0" step="100" data-idx="${idx}">
         <span>ms before this step</span>
       </div>
     `;
@@ -903,7 +933,7 @@ function connectWebSocket() {
     switch (msg.type) {
       case 'init_data':
         profiles = msg.profiles;
-        currentProfileId = msg.activeProfile;
+        setCurrentProfileId(msg.activeProfile);
         settings = msg.settings;
         spotifyUser = msg.spotifyUser;
         
@@ -938,7 +968,7 @@ function connectWebSocket() {
 
       case 'profiles_updated':
         profiles = msg.profiles;
-        currentProfileId = msg.activeProfile;
+        setCurrentProfileId(msg.activeProfile);
         renderProfilesTabs();
         renderGrid();
         populateEditorDropdowns();
@@ -1108,7 +1138,10 @@ function populateSpotifyForm() {
       
       if (spotifyUser && elSpotifyProfileBox) {
         elSpotifyProfileBox.classList.remove('hidden');
-        if (elSpotifyAvatar) elSpotifyAvatar.src = spotifyUser.images?.[0]?.url || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
+        if (elSpotifyAvatar) {
+          const avatarUrl = spotifyUser.images?.[0]?.url;
+          elSpotifyAvatar.src = isSafeUrl(avatarUrl) ? avatarUrl : 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
+        }
         if (elSpotifyUsername) elSpotifyUsername.textContent = spotifyUser.display_name || spotifyUser.id || 'Spotify User';
       } else if (elSpotifyProfileBox) {
         elSpotifyProfileBox.classList.add('hidden');
@@ -1427,10 +1460,10 @@ function addAlertToHistory(alertData) {
 
   item.innerHTML = `
     <div class="log-item-left">
-      <span class="log-item-name">${alertData.name} <span style="color:var(--text-muted);font-weight:normal;font-size:10px;">@ ${timeStr}</span></span>
-      <span class="log-item-msg">${details}</span>
+      <span class="log-item-name">${escapeHtml(alertData.name)} <span style="color:var(--text-muted);font-weight:normal;font-size:10px;">@ ${timeStr}</span></span>
+      <span class="log-item-msg">${escapeHtml(details)}</span>
     </div>
-    <span class="log-item-type ${alertData.alertType}">${labelType}</span>
+    <span class="log-item-type ${escapeHtml(alertData.alertType)}">${escapeHtml(labelType)}</span>
   `;
 
   elAlertsHistoryLog.prepend(item);
@@ -1540,7 +1573,7 @@ function renderObsControlPanel() {
     const item = document.createElement('div');
     item.className = `obs-scene-item ${sceneName === obsCurrentScene ? 'active-scene' : ''}`;
     item.innerHTML = `
-      <span>${sceneName}</span>
+      <span>${escapeHtml(sceneName)}</span>
       ${sceneName === obsCurrentScene ? '<i data-lucide="eye"></i>' : ''}
     `;
     item.addEventListener('click', () => {
@@ -1566,7 +1599,7 @@ function renderObsControlPanel() {
       const item = document.createElement('div');
       item.className = 'obs-audio-channel';
       item.innerHTML = `
-        <span class="obs-channel-name">${inputName}</span>
+        <span class="obs-channel-name">${escapeHtml(inputName)}</span>
         <button class="mute-btn ${isMuted ? 'active-muted' : ''}">
           <i data-lucide="${isMuted ? 'mic-off' : 'mic'}"></i> ${isMuted ? 'MUTED' : 'ACTIVE'}
         </button>
@@ -1599,7 +1632,7 @@ function renderProfilesTabs() {
     btn.className = `profile-tab ${pId === currentProfileId ? 'active' : ''}`;
     btn.textContent = profile.name;
     btn.addEventListener('click', () => {
-      currentProfileId = pId;
+      setCurrentProfileId(pId);
       closeEditorDrawer();
       renderProfilesTabs();
       renderGrid();
@@ -1622,8 +1655,9 @@ function renderGrid() {
     return;
   }
 
-  const rows = activeProfile.rows || 3;
-  const cols = activeProfile.cols || 5;
+  // Clamped to match the server-side bound in lib/validators.js's isValidProfile.
+  const rows = Math.min(Math.max(Number(activeProfile.rows) || 3, 1), 20);
+  const cols = Math.min(Math.max(Number(activeProfile.cols) || 5, 1), 20);
 
   elDeckGrid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
   elDeckGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
@@ -1706,7 +1740,7 @@ function renderGrid() {
           if (customIcons[name]) {
             iconDiv.innerHTML = customIcons[name];
           } else {
-            iconDiv.innerHTML = `<i data-lucide="${btnData.icon}"></i>`;
+            iconDiv.innerHTML = `<i data-lucide="${escapeHtml(btnData.icon)}"></i>`;
           }
           btn.appendChild(iconDiv);
         }
@@ -2043,8 +2077,8 @@ function renderFavorites() {
         slot.classList.add('has-bg-image');
         const hex = favData.color || '#000000';
         slot.innerHTML = `
-          <div class="deck-btn-img-overlay" style="background:${hex};opacity:0.45;position:absolute;inset:0;border-radius:inherit;z-index:1;pointer-events:none;"></div>
-          <div class="deck-btn-label" style="position:relative;z-index:2;text-shadow:0 1px 4px rgba(0,0,0,0.8);">${favData.label || ''}</div>
+          <div class="deck-btn-img-overlay" style="background:${escapeHtml(hex)};opacity:0.45;position:absolute;inset:0;border-radius:inherit;z-index:1;pointer-events:none;"></div>
+          <div class="deck-btn-label" style="position:relative;z-index:2;text-shadow:0 1px 4px rgba(0,0,0,0.8);">${escapeHtml(favData.label || '')}</div>
         `;
       } else {
         const iconName = (favData.icon || 'star').toLowerCase();
@@ -2052,11 +2086,11 @@ function renderFavorites() {
         if (customIcons[iconName]) {
           iconContent = customIcons[iconName];
         } else {
-          iconContent = `<i data-lucide="${favData.icon || 'star'}"></i>`;
+          iconContent = `<i data-lucide="${escapeHtml(favData.icon || 'star')}"></i>`;
         }
         slot.innerHTML = `
           <div class="deck-btn-icon">${iconContent}</div>
-          <div class="deck-btn-label">${favData.label || 'Fav'}</div>
+          <div class="deck-btn-label">${escapeHtml(favData.label || 'Fav')}</div>
         `;
       }
 
@@ -2155,7 +2189,7 @@ function executeAction(btnData) {
   if (btnData.actionType === 'nav') {
     const target = btnData.actionData.targetProfile;
     if (profiles[target]) {
-      currentProfileId = target;
+      setCurrentProfileId(target);
       renderProfilesTabs();
       renderGrid();
     }
@@ -2201,8 +2235,9 @@ function openEditorDrawer(row, col, btnData) {
 
     // Image state
     if (hasImage) {
-      elBtnImageUrl.value = btnData.image;
-      elBtnImagePreview.src = btnData.image;
+      const imgSrc = isSafeUrl(btnData.image) ? btnData.image : '';
+      elBtnImageUrl.value = imgSrc;
+      elBtnImagePreview.src = imgSrc;
       elBtnImagePreviewContainer.style.display = '';
       elBtnImageDropZone.style.display = 'none';
     } else {
@@ -4029,7 +4064,7 @@ elBtnDeleteProfile.addEventListener('click', async () => {
     activeProfile: nextProfileId
   }));
   
-  currentProfileId = nextProfileId;
+  setCurrentProfileId(nextProfileId);
   elProfileModal.classList.add('hidden');
   showToast('Profile deleted!');
 });
@@ -4189,7 +4224,7 @@ function renderObsActiveSceneSources() {
     div.innerHTML = `
       <div class="obs-source-left">
         <i data-lucide="${iconName}"></i>
-        <span class="obs-source-name">${item.sourceName}</span>
+        <span class="obs-source-name">${escapeHtml(item.sourceName)}</span>
       </div>
       <button class="obs-source-visibility-btn ${isVisible ? 'visible' : ''}" title="Toggle Visibility">
         <i data-lucide="${isVisible ? 'eye' : 'eye-off'}"></i>

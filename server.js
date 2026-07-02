@@ -11,6 +11,7 @@ import os from 'os';
 import { OBSWebSocket } from 'obs-websocket-js';
 import multer from 'multer';
 import { io } from 'socket.io-client';
+import rateLimit from 'express-rate-limit';
 import { generatePin, isValidPin, isLocalRequest, isValidProfilesPayload } from './lib/validators.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -192,6 +193,14 @@ app.use('/api', (req, res, next) => {
     return res.status(401).json({ error: 'Missing or invalid pairing PIN.' });
   }
   next();
+});
+
+// Throttles the soundboard management endpoints (list/delete), which touch the filesystem.
+const soundboardLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false
 });
 
 // Global state
@@ -1396,7 +1405,7 @@ app.post('/api/spotify/control', async (req, res) => {
 });
 
 // Soundboard API: List sounds
-app.get('/api/soundboard/sounds', async (req, res) => {
+app.get('/api/soundboard/sounds', soundboardLimiter, async (req, res) => {
   try {
     const meta = await loadJson(SOUNDS_META_PATH, {});
     const audioFiles = [];
@@ -1459,9 +1468,10 @@ app.post('/api/soundboard/upload', handleUpload(uploadAudio.single('sound')), as
 });
 
 // Soundboard API: Delete sound
-app.delete('/api/soundboard/sounds/:id', async (req, res) => {
+app.delete('/api/soundboard/sounds/:id', soundboardLimiter, async (req, res) => {
   try {
-    const id = req.params.id;
+    // Sanitize: strip any directory components so the id can never escape UPLOADS_DIR.
+    const id = path.basename(req.params.id);
     const filePath = path.join(UPLOADS_DIR, id);
     
     try {
