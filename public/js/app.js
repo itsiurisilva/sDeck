@@ -17,8 +17,17 @@ function escapeHtml(value) {
   }[ch]));
 }
 
-// Allows same-origin/relative paths and http(s)/data-image URLs; rejects javascript:/data:text/html etc.
-const SAFE_URL_RE = /^(https?:\/\/|\/|\.\/|data:image\/)/i;
+// Allows same-origin/relative paths and http(s)/data-image URLs; rejects javascript:/data:text/html
+// and protocol-relative "//host" URLs (which browsers resolve to an arbitrary external origin).
+function isSafeImageUrl(url) {
+  return typeof url === 'string' && (
+    url.startsWith('https://') ||
+    url.startsWith('http://') ||
+    (url.startsWith('/') && !url.startsWith('//')) ||
+    url.startsWith('./') ||
+    url.startsWith('data:image/')
+  );
+}
 
 // profiles is a plain object keyed by profile id; if currentProfileId were ever set to
 // "__proto__" (e.g. via a "Switch Profile" action's targetProfile field in an imported
@@ -640,9 +649,13 @@ function updateTwitchIrcBars() {
 async function executeMacro(steps) {
   if (!steps || steps.length === 0) return;
   for (const step of steps) {
+    let delay = 0;
     const rawDelay = Number(step.delay);
     if (Number.isFinite(rawDelay) && rawDelay > 0 && rawDelay <= 60000) {
-      await new Promise(resolve => setTimeout(resolve, rawDelay));
+      delay = rawDelay;
+    }
+    if (delay > 0) {
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
     if (step.type === 'nav') {
       const target = step.data?.targetProfile;
@@ -1133,7 +1146,7 @@ function populateSpotifyForm() {
         if (elSpotifyAvatar) {
           let avatarUrl = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
           const rawAvatarUrl = spotifyUser.images?.[0]?.url;
-          if (typeof rawAvatarUrl === 'string' && SAFE_URL_RE.test(rawAvatarUrl)) {
+          if (isSafeImageUrl(rawAvatarUrl)) {
             avatarUrl = rawAvatarUrl;
           }
           elSpotifyAvatar.src = avatarUrl;
@@ -2237,7 +2250,7 @@ function openEditorDrawer(row, col, btnData) {
     // Image state
     if (hasImage) {
       let imgSrc = '';
-      if (typeof btnData.image === 'string' && SAFE_URL_RE.test(btnData.image)) {
+      if (isSafeImageUrl(btnData.image)) {
         imgSrc = btnData.image;
       }
       elBtnImageUrl.value = imgSrc;
