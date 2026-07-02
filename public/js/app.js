@@ -17,16 +17,8 @@ function escapeHtml(value) {
   }[ch]));
 }
 
-// Allows same-origin/relative paths and http(s) URLs; rejects javascript:/data:text/html etc.
-function isSafeUrl(url) {
-  if (typeof url !== 'string' || !url) return false;
-  if (url.startsWith('/') || url.startsWith('./') || url.startsWith('data:image/')) return true;
-  try {
-    return ['http:', 'https:'].includes(new URL(url, window.location.origin).protocol);
-  } catch {
-    return false;
-  }
-}
+// Allows same-origin/relative paths and http(s)/data-image URLs; rejects javascript:/data:text/html etc.
+const SAFE_URL_RE = /^(https?:\/\/|\/|\.\/|data:image\/)/i;
 
 // profiles is a plain object keyed by profile id; if currentProfileId were ever set to
 // "__proto__" (e.g. via a "Switch Profile" action's targetProfile field in an imported
@@ -648,7 +640,9 @@ function updateTwitchIrcBars() {
 async function executeMacro(steps) {
   if (!steps || steps.length === 0) return;
   for (const step of steps) {
-    const delay = Math.min(Math.max(Number(step.delay) || 0, 0), 60000);
+    let delay = Number(step.delay) || 0;
+    if (delay < 0) delay = 0;
+    if (delay > 60000) delay = 60000;
     if (delay > 0) {
       await new Promise(resolve => setTimeout(resolve, delay));
     }
@@ -1140,7 +1134,9 @@ function populateSpotifyForm() {
         elSpotifyProfileBox.classList.remove('hidden');
         if (elSpotifyAvatar) {
           const avatarUrl = spotifyUser.images?.[0]?.url;
-          elSpotifyAvatar.src = isSafeUrl(avatarUrl) ? avatarUrl : 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
+          elSpotifyAvatar.src = (typeof avatarUrl === 'string' && SAFE_URL_RE.test(avatarUrl))
+            ? avatarUrl
+            : 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
         }
         if (elSpotifyUsername) elSpotifyUsername.textContent = spotifyUser.display_name || spotifyUser.id || 'Spotify User';
       } else if (elSpotifyProfileBox) {
@@ -1656,8 +1652,12 @@ function renderGrid() {
   }
 
   // Clamped to match the server-side bound in lib/validators.js's isValidProfile.
-  const rows = Math.min(Math.max(Number(activeProfile.rows) || 3, 1), 20);
-  const cols = Math.min(Math.max(Number(activeProfile.cols) || 5, 1), 20);
+  let rows = Number(activeProfile.rows) || 3;
+  if (rows < 1) rows = 1;
+  if (rows > 20) rows = 20;
+  let cols = Number(activeProfile.cols) || 5;
+  if (cols < 1) cols = 1;
+  if (cols > 20) cols = 20;
 
   elDeckGrid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
   elDeckGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
@@ -2235,7 +2235,7 @@ function openEditorDrawer(row, col, btnData) {
 
     // Image state
     if (hasImage) {
-      const imgSrc = isSafeUrl(btnData.image) ? btnData.image : '';
+      const imgSrc = (typeof btnData.image === 'string' && SAFE_URL_RE.test(btnData.image)) ? btnData.image : '';
       elBtnImageUrl.value = imgSrc;
       elBtnImagePreview.src = imgSrc;
       elBtnImagePreviewContainer.style.display = '';
@@ -4018,18 +4018,19 @@ elProfileModalClose.addEventListener('click', () => {
 });
 
 elBtnSaveProfileSettings.addEventListener('click', () => {
+  if (currentProfileId === '__proto__' || currentProfileId === 'constructor' || currentProfileId === 'prototype') return;
   const activeProfile = profiles[currentProfileId];
   if (!activeProfile) return;
-  
+
   const newName = elProfileRenameInput.value.trim();
   if (newName === '') {
     showToast('Profile name cannot be empty', true);
     return;
   }
-  
+
   const newRows = parseInt(elProfileRowsSelect.value);
   const newCols = parseInt(elProfileColsSelect.value);
-  
+
   activeProfile.name = newName;
   activeProfile.rows = newRows;
   activeProfile.cols = newCols;
